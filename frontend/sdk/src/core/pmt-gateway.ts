@@ -38,12 +38,16 @@ export class PMTGateway {
     return this.walletAuth.getSupportedWallets();
   }
 
+  async getSupportedChains() {
+    return this.walletAuth.getSupportedChains();
+  }
+
   async connectWallet(walletId: string) {
     return this.walletAuth.connectWallet(walletId);
   }
 
-  async authenticateWallet(merchantId: string): Promise<string> {
-    return this.walletAuth.authenticateWallet(merchantId);
+  async authenticateWallet(merchantId: string, chainId: string = 'polkadot'): Promise<string> {
+    return this.walletAuth.authenticateWallet(merchantId, chainId);
   }
 
   getCurrentConnection() {

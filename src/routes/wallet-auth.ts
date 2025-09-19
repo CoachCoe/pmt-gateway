@@ -1,6 +1,7 @@
 import { Router, Request, Response } from 'express';
 import { AuthService } from '@/services/auth.service';
 import { walletAuthService } from '@/services/wallet-auth.service';
+import { polkadotSSOService } from '@/services/polkadot-sso.service';
 import { AuthMiddleware } from '@/middleware/auth.middleware';
 import { authRateLimit } from '@/middleware/rate-limit.middleware';
 import logger from '@/utils/logger';
@@ -26,6 +27,12 @@ export class WalletAuthRoutes {
       this.getSupportedWallets.bind(this)
     );
 
+    // Get supported chains
+    this.router.get(
+      '/chains',
+      this.getSupportedChains.bind(this)
+    );
+
     // Generate authentication challenge
     this.router.post(
       '/challenge',
@@ -46,6 +53,20 @@ export class WalletAuthRoutes {
       this.authMiddleware.optionalAuth,
       this.getConnectionStatus.bind(this)
     );
+
+    // Refresh session
+    this.router.post(
+      '/refresh',
+      authRateLimit,
+      this.refreshSession.bind(this)
+    );
+
+    // Revoke session
+    this.router.post(
+      '/revoke',
+      authRateLimit,
+      this.revokeSession.bind(this)
+    );
   }
 
   private async getSupportedWallets(req: Request, res: Response): Promise<void> {
@@ -54,7 +75,7 @@ export class WalletAuthRoutes {
       
       logger.info('Getting supported wallets', { requestId });
 
-      const wallets = walletAuthService.getSupportedWallets();
+      const wallets = await walletAuthService.getSupportedWallets();
 
       res.json({
         success: true,
@@ -82,10 +103,44 @@ export class WalletAuthRoutes {
     }
   }
 
+  private async getSupportedChains(req: Request, res: Response): Promise<void> {
+    try {
+      const requestId = req.headers['x-request-id'] as string || uuidv4();
+      
+      logger.info('Getting supported chains', { requestId });
+
+      const chains = polkadotSSOService.getSupportedChains();
+
+      res.json({
+        success: true,
+        data: { chains },
+        meta: {
+          timestamp: new Date().toISOString(),
+          request_id: requestId,
+        },
+      });
+
+    } catch (error) {
+      logger.error('Failed to get supported chains:', error);
+
+      res.status(500).json({
+        success: false,
+        error: {
+          code: 'CHAINS_RETRIEVAL_FAILED',
+          message: 'Failed to retrieve supported chains',
+        },
+        meta: {
+          timestamp: new Date().toISOString(),
+          request_id: req.headers['x-request-id'] as string || 'unknown',
+        },
+      });
+    }
+  }
+
   private async generateChallenge(req: Request, res: Response): Promise<void> {
     try {
       const requestId = req.headers['x-request-id'] as string || uuidv4();
-      const { address } = req.body;
+      const { address, chainId = 'polkadot' } = req.body;
 
       if (!address) {
         res.status(400).json({
@@ -121,9 +176,10 @@ export class WalletAuthRoutes {
       logger.info('Generating wallet auth challenge', {
         requestId,
         address,
+        chainId,
       });
 
-      const challenge = walletAuthService.generateChallenge(address);
+      const challenge = await walletAuthService.generateChallenge(address, chainId);
 
       res.json({
         success: true,
@@ -157,7 +213,7 @@ export class WalletAuthRoutes {
   private async verifyAuthentication(req: Request, res: Response): Promise<void> {
     try {
       const requestId = req.headers['x-request-id'] as string || uuidv4();
-      const { signature, address, challenge, merchantId } = req.body;
+      const { signature, address, challenge, merchantId, chainId = 'polkadot' } = req.body;
 
       if (!signature || !address || !challenge || !merchantId) {
         res.status(400).json({
@@ -178,15 +234,17 @@ export class WalletAuthRoutes {
         requestId,
         address,
         merchantId,
+        chainId,
       });
 
-      // Verify the signature
-      const isValid = walletAuthService.verifySignature(
+      // Verify the signature using enhanced SSO integration
+      const verificationResult = await walletAuthService.verifySignature(
         { signature, address, challenge },
-        address
+        address,
+        chainId
       );
 
-      if (!isValid) {
+      if (!verificationResult.valid) {
         res.status(401).json({
           success: false,
           error: {
@@ -201,9 +259,22 @@ export class WalletAuthRoutes {
         return;
       }
 
-      // Create wallet session
+      // Create wallet session with SSO integration
+      let sessionId = verificationResult.sessionId;
+      if (!sessionId) {
+        // Create session manually if not provided by SSO
+        const session = await polkadotSSOService.createSession({
+          address,
+          chainId,
+          walletType: verificationResult.walletType || 'unknown',
+          merchantId,
+        });
+        sessionId = session.id;
+      }
+
+      // Create wallet session token
       const token = await this.authService.authenticateWallet(
-        { address, source: 'polkadot-js' }, // Default source
+        { address, source: verificationResult.walletType || 'polkadot-js' },
         merchantId
       );
 
@@ -211,6 +282,8 @@ export class WalletAuthRoutes {
         requestId,
         address,
         merchantId,
+        sessionId,
+        walletType: verificationResult.walletType,
       });
 
       res.json({
@@ -219,6 +292,8 @@ export class WalletAuthRoutes {
           token,
           address,
           merchantId,
+          sessionId,
+          walletType: verificationResult.walletType,
         },
         meta: {
           timestamp: new Date().toISOString(),
@@ -297,6 +372,112 @@ export class WalletAuthRoutes {
         error: {
           code: 'STATUS_RETRIEVAL_FAILED',
           message: 'Failed to retrieve connection status',
+        },
+        meta: {
+          timestamp: new Date().toISOString(),
+          request_id: req.headers['x-request-id'] as string || 'unknown',
+        },
+      });
+    }
+  }
+
+  private async refreshSession(req: Request, res: Response): Promise<void> {
+    try {
+      const requestId = req.headers['x-request-id'] as string || uuidv4();
+      const { sessionId } = req.body;
+
+      if (!sessionId) {
+        res.status(400).json({
+          success: false,
+          error: {
+            code: 'MISSING_SESSION_ID',
+            message: 'Session ID is required',
+          },
+          meta: {
+            timestamp: new Date().toISOString(),
+            request_id: requestId,
+          },
+        });
+        return;
+      }
+
+      logger.info('Refreshing session', { requestId, sessionId });
+
+      const session = await polkadotSSOService.refreshSession(sessionId);
+
+      res.json({
+        success: true,
+        data: { session },
+        meta: {
+          timestamp: new Date().toISOString(),
+          request_id: requestId,
+        },
+      });
+
+    } catch (error) {
+      logger.error('Failed to refresh session:', {
+        requestId: req.headers['x-request-id'],
+        error,
+      });
+
+      res.status(500).json({
+        success: false,
+        error: {
+          code: 'SESSION_REFRESH_FAILED',
+          message: 'Failed to refresh session',
+        },
+        meta: {
+          timestamp: new Date().toISOString(),
+          request_id: req.headers['x-request-id'] as string || 'unknown',
+        },
+      });
+    }
+  }
+
+  private async revokeSession(req: Request, res: Response): Promise<void> {
+    try {
+      const requestId = req.headers['x-request-id'] as string || uuidv4();
+      const { sessionId } = req.body;
+
+      if (!sessionId) {
+        res.status(400).json({
+          success: false,
+          error: {
+            code: 'MISSING_SESSION_ID',
+            message: 'Session ID is required',
+          },
+          meta: {
+            timestamp: new Date().toISOString(),
+            request_id: requestId,
+          },
+        });
+        return;
+      }
+
+      logger.info('Revoking session', { requestId, sessionId });
+
+      await polkadotSSOService.revokeSession(sessionId);
+
+      res.json({
+        success: true,
+        data: { message: 'Session revoked successfully' },
+        meta: {
+          timestamp: new Date().toISOString(),
+          request_id: requestId,
+        },
+      });
+
+    } catch (error) {
+      logger.error('Failed to revoke session:', {
+        requestId: req.headers['x-request-id'],
+        error,
+      });
+
+      res.status(500).json({
+        success: false,
+        error: {
+          code: 'SESSION_REVOKE_FAILED',
+          message: 'Failed to revoke session',
         },
         meta: {
           timestamp: new Date().toISOString(),

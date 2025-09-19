@@ -2,6 +2,7 @@ import { u8aToHex } from '@polkadot/util';
 import { blake2AsU8a } from '@polkadot/util-crypto';
 import { Keyring } from '@polkadot/keyring';
 import logger from '@/utils/logger';
+import { polkadotSSOService } from './polkadot-sso.service';
 
 export interface WalletAuthChallenge {
   message: string;
@@ -22,53 +23,75 @@ export class WalletAuthService {
     this.keyring = new Keyring({ type: 'sr25519' });
   }
 
-  public generateChallenge(address: string): WalletAuthChallenge {
-    const nonce = this.generateNonce();
-    const timestamp = Date.now();
-    const message = this.createAuthMessage(address, nonce, timestamp);
+  public async generateChallenge(address: string, chainId: string = 'polkadot'): Promise<WalletAuthChallenge> {
+    try {
+      // Use Polkadot SSO to generate challenge
+      const challenge = await polkadotSSOService.createChallenge(address, chainId);
+      
+      const walletChallenge: WalletAuthChallenge = {
+        message: challenge.message,
+        nonce: challenge.nonce,
+        timestamp: challenge.issuedAt,
+      };
 
-    logger.info('Generated wallet auth challenge', {
-      address,
-      nonce,
-      timestamp,
-    });
+      logger.info('Generated wallet auth challenge via Polkadot SSO', {
+        address,
+        chainId,
+        nonce: challenge.nonce,
+      });
 
-    return {
-      message,
-      nonce,
-      timestamp,
-    };
+      return walletChallenge;
+    } catch (error) {
+      logger.error('Failed to generate challenge via Polkadot SSO, falling back to local method', { error, address });
+      
+      // Fallback to local challenge generation
+      const nonce = this.generateNonce();
+      const timestamp = Date.now();
+      const message = this.createAuthMessage(address, nonce, timestamp);
+
+      return {
+        message,
+        nonce,
+        timestamp,
+      };
+    }
   }
 
-  public verifySignature(
+  public async verifySignature(
     response: WalletAuthResponse,
-    expectedAddress: string
-  ): boolean {
+    expectedAddress: string,
+    _chainId: string = 'polkadot'
+  ): Promise<{ valid: boolean; sessionId?: string; walletType?: string }> {
     try {
-      // Verify the challenge is recent (within 5 minutes)
-      const now = Date.now();
-      const challengeAge = now - response.challenge.timestamp;
-      const maxAge = 5 * 60 * 1000; // 5 minutes
+      // First try Polkadot SSO verification
+      try {
+        const verificationResult = await polkadotSSOService.verifySignature(
+          {
+            message: response.challenge.message,
+            nonce: response.challenge.nonce,
+            timestamp: response.challenge.timestamp,
+          },
+          response.signature,
+          response.address
+        );
 
-      if (challengeAge > maxAge) {
-        logger.warn('Wallet auth challenge expired', {
-          address: expectedAddress,
-          challengeAge,
-          maxAge,
-        });
-        return false;
+        if (verificationResult.valid) {
+          logger.info('Wallet auth signature verified via Polkadot SSO', {
+            address: response.address,
+            walletType: verificationResult.walletType,
+          });
+
+          return {
+            valid: true,
+            sessionId: verificationResult.sessionId,
+            walletType: verificationResult.walletType,
+          };
+        }
+      } catch (ssoError) {
+        logger.warn('Polkadot SSO verification failed, falling back to local verification', { ssoError });
       }
 
-      // Verify the address matches
-      if (response.address !== expectedAddress) {
-        logger.warn('Wallet auth address mismatch', {
-          expected: expectedAddress,
-          provided: response.address,
-        });
-        return false;
-      }
-
-      // Verify the signature
+      // Fallback to local verification
       const isValid = this.verifyPolkadotSignature(
         response.challenge.message,
         response.signature,
@@ -76,7 +99,7 @@ export class WalletAuthService {
       );
 
       if (isValid) {
-        logger.info('Wallet auth signature verified', {
+        logger.info('Wallet auth signature verified locally', {
           address: response.address,
         });
       } else {
@@ -85,14 +108,14 @@ export class WalletAuthService {
         });
       }
 
-      return isValid;
+      return { valid: isValid };
 
     } catch (error) {
       logger.error('Wallet auth verification error:', {
         address: expectedAddress,
         error,
       });
-      return false;
+      return { valid: false };
     }
   }
 

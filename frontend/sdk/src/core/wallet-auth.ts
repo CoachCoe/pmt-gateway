@@ -23,9 +23,18 @@ export class WalletAuthService {
     }
   }
 
-  async generateAuthChallenge(address: string): Promise<WalletAuthChallenge> {
+  async getSupportedChains(): Promise<Array<{ id: string; name: string; rpcUrl: string; ss58Format: number; decimals: number; symbol: string }>> {
     try {
-      const response = await this.apiClient.generateAuthChallenge(address);
+      return await this.apiClient.getSupportedChains();
+    } catch (error) {
+      console.error('Failed to get supported chains:', error);
+      throw error;
+    }
+  }
+
+  async generateAuthChallenge(address: string, chainId: string = 'polkadot'): Promise<WalletAuthChallenge> {
+    try {
+      const response = await this.apiClient.generateAuthChallenge(address, chainId);
       return response.challenge;
     } catch (error) {
       console.error('Failed to generate auth challenge:', error);
@@ -73,7 +82,7 @@ export class WalletAuthService {
     }
   }
 
-  async authenticateWallet(merchantId: string): Promise<string> {
+  async authenticateWallet(merchantId: string, chainId: string = 'polkadot'): Promise<string> {
     if (!this.currentConnection) {
       throw new PMTGatewayError(
         'No wallet connected',
@@ -83,7 +92,7 @@ export class WalletAuthService {
 
     try {
       // Generate auth challenge
-      const challenge = await this.generateAuthChallenge(this.currentConnection.address);
+      const challenge = await this.generateAuthChallenge(this.currentConnection.address, chainId);
       
       // Request signature from wallet
       const signature = await this.requestSignature(challenge.message);
@@ -94,6 +103,7 @@ export class WalletAuthService {
         address: this.currentConnection.address,
         challenge,
         merchantId,
+        chainId,
       });
 
       return response.token;

@@ -111,10 +111,10 @@ export class APIClient {
     return response.data.wallets;
   }
 
-  async generateAuthChallenge(address: string): Promise<{ challenge: { message: string; nonce: string; timestamp: number } }> {
+  async generateAuthChallenge(address: string, chainId: string = 'polkadot'): Promise<{ challenge: { message: string; nonce: string; timestamp: number } }> {
     const response = await this.request<{ challenge: { message: string; nonce: string; timestamp: number } }>('/api/v1/wallet/challenge', {
       method: 'POST',
-      body: JSON.stringify({ address }),
+      body: JSON.stringify({ address, chainId }),
     });
 
     if (!response.success || !response.data) {
@@ -127,13 +127,27 @@ export class APIClient {
     return response.data;
   }
 
+  async getSupportedChains(): Promise<Array<{ id: string; name: string; rpcUrl: string; ss58Format: number; decimals: number; symbol: string }>> {
+    const response = await this.request<{ chains: Array<{ id: string; name: string; rpcUrl: string; ss58Format: number; decimals: number; symbol: string }> }>('/api/v1/wallet/chains');
+
+    if (!response.success || !response.data) {
+      throw new PMTGatewayError(
+        'Failed to get supported chains',
+        'CHAINS_RETRIEVAL_FAILED'
+      );
+    }
+
+    return response.data.chains;
+  }
+
   async verifyWalletAuth(data: {
     signature: string;
     address: string;
     challenge: { message: string; nonce: string; timestamp: number };
     merchantId: string;
-  }): Promise<{ token: string; address: string; merchantId: string }> {
-    const response = await this.request<{ token: string; address: string; merchantId: string }>('/api/v1/wallet/verify', {
+    chainId?: string;
+  }): Promise<{ token: string; address: string; merchantId: string; sessionId?: string; walletType?: string }> {
+    const response = await this.request<{ token: string; address: string; merchantId: string; sessionId?: string; walletType?: string }>('/api/v1/wallet/verify', {
       method: 'POST',
       body: JSON.stringify(data),
     });

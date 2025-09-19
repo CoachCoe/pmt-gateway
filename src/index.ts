@@ -13,6 +13,7 @@ import { WebhookService } from '@/services/webhook.service';
 import { AuthService } from '@/services/auth.service';
 import { BlockchainMonitorService } from '@/services/blockchain-monitor.service';
 import { polkadotService } from '@/services/polkadot-simple.service';
+import { polkadotSSOService } from '@/services/polkadot-sso.service';
 import { priceService } from '@/utils/price.utils';
 
 // Import routes
@@ -87,6 +88,15 @@ class Application {
 
     // Rate limiting
     this.app.use(generalRateLimit);
+
+    // Polkadot SSO middleware
+    try {
+      const ssoMiddleware = polkadotSSOService.getMiddleware();
+      this.app.use('/auth', ssoMiddleware);
+      logger.info('Polkadot SSO middleware initialized');
+    } catch (error) {
+      logger.warn('Failed to initialize Polkadot SSO middleware, continuing without it:', error);
+    }
   }
 
   private setupRoutes(): void {
