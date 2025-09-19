@@ -1,0 +1,59 @@
+{
+  "name": "@pmt-gateway/sdk",
+  "version": "1.0.0",
+  "description": "PMT Gateway JavaScript SDK for easy Polkadot payment integration",
+  "main": "dist/index.js",
+  "module": "dist/index.esm.js",
+  "types": "dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "rollup -c",
+    "dev": "rollup -c -w",
+    "test": "jest",
+    "lint": "eslint src/**/*.ts",
+    "type-check": "tsc --noEmit"
+  },
+  "keywords": [
+    "polkadot",
+    "payment",
+    "gateway",
+    "crypto",
+    "web3",
+    "sdk"
+  ],
+  "author": "PMT Gateway Team",
+  "license": "MIT",
+  "dependencies": {
+    "@polkadot/util": "^12.4.2",
+    "@polkadot/util-crypto": "^12.4.2",
+    "@polkadot/keyring": "^12.4.2"
+  },
+  "devDependencies": {
+    "@rollup/plugin-commonjs": "^25.0.7",
+    "@rollup/plugin-node-resolve": "^15.2.3",
+    "@rollup/plugin-typescript": "^11.1.5",
+    "@types/jest": "^29.5.8",
+    "@typescript-eslint/eslint-plugin": "^6.13.1",
+    "@typescript-eslint/parser": "^6.13.1",
+    "eslint": "^8.54.0",
+    "jest": "^29.7.0",
+    "rollup": "^4.9.1",
+    "@rollup/plugin-terser": "^0.4.4",
+    "ts-jest": "^29.1.1",
+    "typescript": "^5.3.3"
+  },
+  "peerDependencies": {
+    "react": ">=16.8.0",
+    "react-dom": ">=16.8.0"
+  },
+  "peerDependenciesMeta": {
+    "react": {
+      "optional": true
+    },
+    "react-dom": {
+      "optional": true
+    }
+  }
+}

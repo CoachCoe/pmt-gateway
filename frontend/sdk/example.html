@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PMT Gateway SDK Example</title>
+    <style>
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f9fafb;
+        }
+        .container {
+            background: white;
+            border-radius: 12px;
+            padding: 32px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 32px;
+        }
+        .header h1 {
+            color: #1f2937;
+            margin: 0 0 8px;
+        }
+        .header p {
+            color: #6b7280;
+            margin: 0;
+        }
+        .demo-section {
+            margin: 32px 0;
+            padding: 24px;
+            border: 1px solid #e5e7eb;
+            border-radius: 8px;
+            background: #f9fafb;
+        }
+        .demo-section h3 {
+            margin: 0 0 16px;
+            color: #374151;
+        }
+        .button {
+            background: #6366f1;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            margin: 8px;
+        }
+        .button:hover {
+            background: #5b5bd6;
+        }
+        .button:disabled {
+            background: #9ca3af;
+            cursor: not-allowed;
+        }
+        .payment-widget-container {
+            margin: 24px 0;
+            min-height: 400px;
+            border: 2px dashed #d1d5db;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: white;
+        }
+        .code-block {
+            background: #1f2937;
+            color: #f9fafb;
+            padding: 16px;
+            border-radius: 6px;
+            font-family: 'Monaco', 'Menlo', monospace;
+            font-size: 14px;
+            overflow-x: auto;
+            margin: 16px 0;
+        }
+        .status {
+            padding: 12px;
+            border-radius: 6px;
+            margin: 16px 0;
+            font-size: 14px;
+        }
+        .status.success {
+            background: #d1fae5;
+            color: #065f46;
+            border: 1px solid #a7f3d0;
+        }
+        .status.error {
+            background: #fee2e2;
+            color: #991b1b;
+            border: 1px solid #fca5a5;
+        }
+        .status.info {
+            background: #dbeafe;
+            color: #1e40af;
+            border: 1px solid #93c5fd;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>PMT Gateway SDK</h1>
+            <p>Polkadot Payment Gateway - JavaScript SDK Demo</p>
+        </div>
+
+        <div class="demo-section">
+            <h3>1. Initialize SDK</h3>
+            <p>First, initialize the PMT Gateway SDK with your API key:</p>
+            <div class="code-block">
+// Initialize PMT Gateway
+const pmt = PMTGateway.create({
+    publicKey: 'pk_test_your_api_key_here',
+    environment: 'test',
+    debug: true
+});
+            </div>
+            <button class="button" onclick="initializeSDK()">Initialize SDK</button>
+            <div id="init-status"></div>
+        </div>
+
+        <div class="demo-section">
+            <h3>2. Create Payment Intent</h3>
+            <p>Create a payment intent for $25.00 USD:</p>
+            <div class="code-block">
+// Create payment intent
+const paymentIntent = await pmt.createPaymentIntent({
+    amount: 2500, // $25.00 in cents
+    currency: 'usd',
+    crypto_currency: 'dot',
+    metadata: {
+        order_id: 'order_123',
+        customer_email: 'customer@example.com'
+    }
+});
+            </div>
+            <button class="button" onclick="createPaymentIntent()">Create Payment Intent</button>
+            <div id="payment-status"></div>
+        </div>
+
+        <div class="demo-section">
+            <h3>3. Payment Widget</h3>
+            <p>Display the payment widget for customers to complete payment:</p>
+            <div class="code-block">
+// Create payment widget
+const widget = pmt.createPaymentWidget({
+    container: '#payment-widget',
+    paymentIntent: paymentIntent,
+    onSuccess: (event) => {
+        console.log('Payment successful:', event);
+    },
+    onError: (error) => {
+        console.error('Payment failed:', error);
+    },
+    theme: {
+        primaryColor: '#6366f1',
+        borderRadius: '8px'
+    }
+});
+            </div>
+            <button class="button" onclick="createPaymentWidget()">Create Payment Widget</button>
+            <div id="widget-status"></div>
+        </div>
+
+        <div class="demo-section">
+            <h3>Payment Widget</h3>
+            <div id="payment-widget" class="payment-widget-container">
+                <p style="color: #6b7280;">Payment widget will appear here</p>
+            </div>
+        </div>
+
+        <div class="demo-section">
+            <h3>4. Wallet Management</h3>
+            <p>Manage wallet connections and authentication:</p>
+            <div class="code-block">
+// Get supported wallets
+const wallets = await pmt.getSupportedWallets();
+
+// Connect to a wallet
+const connection = await pmt.connectWallet('polkadot-js');
+
+// Authenticate wallet
+const token = await pmt.authenticateWallet('merchant_id');
+            </div>
+            <button class="button" onclick="getWallets()">Get Supported Wallets</button>
+            <button class="button" onclick="connectWallet()">Connect Wallet</button>
+            <div id="wallet-status"></div>
+        </div>
+    </div>
+
+    <!-- Load the PMT Gateway SDK -->
+    <script src="../dist/index.js"></script>
+    <script>
+        let pmt = null;
+        let paymentIntent = null;
+
+        function showStatus(elementId, message, type = 'info') {
+            const element = document.getElementById(elementId);
+            element.innerHTML = `<div class="status ${type}">${message}</div>`;
+        }
+
+        async function initializeSDK() {
+            try {
+                // Initialize PMT Gateway
+                pmt = PMTGateway.create({
+                    publicKey: 'pk_test_demo_key_123456789',
+                    environment: 'test',
+                    debug: true
+                });
+
+                showStatus('init-status', 'SDK initialized successfully!', 'success');
+            } catch (error) {
+                showStatus('init-status', `Error: ${error.message}`, 'error');
+            }
+        }
+
+        async function createPaymentIntent() {
+            if (!pmt) {
+                showStatus('payment-status', 'Please initialize SDK first', 'error');
+                return;
+            }
+
+            try {
+                paymentIntent = await pmt.createPaymentIntent({
+                    amount: 2500, // $25.00 in cents
+                    currency: 'usd',
+                    crypto_currency: 'dot',
+                    metadata: {
+                        order_id: 'order_123',
+                        customer_email: 'customer@example.com'
+                    }
+                });
+
+                showStatus('payment-status', `Payment intent created: ${paymentIntent.id}`, 'success');
+            } catch (error) {
+                showStatus('payment-status', `Error: ${error.message}`, 'error');
+            }
+        }
+
+        async function createPaymentWidget() {
+            if (!pmt || !paymentIntent) {
+                showStatus('widget-status', 'Please create payment intent first', 'error');
+                return;
+            }
+
+            try {
+                const widget = pmt.createPaymentWidget({
+                    container: '#payment-widget',
+                    paymentIntent: paymentIntent,
+                    onSuccess: (event) => {
+                        console.log('Payment successful:', event);
+                        showStatus('widget-status', 'Payment completed successfully!', 'success');
+                    },
+                    onError: (error) => {
+                        console.error('Payment failed:', error);
+                        showStatus('widget-status', `Payment failed: ${error.message}`, 'error');
+                    },
+                    onCancel: () => {
+                        console.log('Payment canceled');
+                        showStatus('widget-status', 'Payment canceled', 'info');
+                    },
+                    theme: {
+                        primaryColor: '#6366f1',
+                        borderRadius: '8px'
+                    }
+                });
+
+                showStatus('widget-status', 'Payment widget created successfully!', 'success');
+            } catch (error) {
+                showStatus('widget-status', `Error: ${error.message}`, 'error');
+            }
+        }
+
+        async function getWallets() {
+            if (!pmt) {
+                showStatus('wallet-status', 'Please initialize SDK first', 'error');
+                return;
+            }
+
+            try {
+                const wallets = await pmt.getSupportedWallets();
+                showStatus('wallet-status', `Found ${wallets.length} supported wallets: ${wallets.map(w => w.name).join(', ')}`, 'success');
+            } catch (error) {
+                showStatus('wallet-status', `Error: ${error.message}`, 'error');
+            }
+        }
+
+        async function connectWallet() {
+            if (!pmt) {
+                showStatus('wallet-status', 'Please initialize SDK first', 'error');
+                return;
+            }
+
+            try {
+                const connection = await pmt.connectWallet('polkadot-js');
+                showStatus('wallet-status', `Connected to wallet: ${connection.address}`, 'success');
+            } catch (error) {
+                showStatus('wallet-status', `Error: ${error.message}`, 'error');
+            }
+        }
+
+        // Initialize on page load
+        window.addEventListener('load', () => {
+            showStatus('init-status', 'Ready to initialize SDK', 'info');
+        });
+    </script>
+</body>
+</html>
