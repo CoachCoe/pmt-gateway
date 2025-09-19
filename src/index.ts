@@ -12,7 +12,7 @@ import { PaymentService } from '@/services/payment.service';
 import { WebhookService } from '@/services/webhook.service';
 import { AuthService } from '@/services/auth.service';
 import { BlockchainMonitorService } from '@/services/blockchain-monitor.service';
-import { polkadotService } from '@/services/polkadot-simple.service';
+import { polkadotRealService as polkadotService } from '@/services/polkadot-real.service';
 import { polkadotSSOService } from '@/services/polkadot-sso.service';
 import { priceService } from '@/utils/price.utils';
 

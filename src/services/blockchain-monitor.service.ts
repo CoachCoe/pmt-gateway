@@ -1,5 +1,5 @@
 import { PrismaClient, PaymentStatus } from '@prisma/client';
-import { polkadotService } from './polkadot-simple.service';
+import { polkadotRealService as polkadotService } from './polkadot-real.service';
 import { PaymentService } from './payment.service';
 import { WebhookService } from './webhook.service';
 import logger from '@/utils/logger';
@@ -29,10 +29,10 @@ export class BlockchainMonitorService {
     }
 
     try {
-      // Check if Polkadot API is ready
+      // Check if Polkadot API is ready, but don't fail if not ready yet
       const isReady = await polkadotService.isApiReady();
       if (!isReady) {
-        throw new Error('Polkadot API is not ready');
+        logger.warn('Polkadot API is not ready yet, starting monitoring with retry logic');
       }
 
       this.isMonitoring = true;
@@ -81,6 +81,13 @@ export class BlockchainMonitorService {
 
   private async processPendingPayments(): Promise<void> {
     try {
+      // Check if Polkadot API is ready before processing
+      const isReady = await polkadotService.isApiReady();
+      if (!isReady) {
+        logger.debug('Polkadot API not ready, skipping payment processing');
+        return;
+      }
+
       // Get all pending payment intents
       const pendingPayments = await this.prisma.paymentIntent.findMany({
         where: {

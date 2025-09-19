@@ -151,7 +151,7 @@ export function WebhooksPage() {
               </tr>
             </thead>
             <tbody>
-              {data?.events.map((event) => {
+              {data?.events?.map((event) => {
                 const status = statusConfig[event.status] || statusConfig.PENDING;
                 const StatusIcon = status.icon;
 
