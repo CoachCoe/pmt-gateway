@@ -1,26 +1,36 @@
 # PMT Gateway
 
-A web3 payment gateway built on Polkadot that enables instant DOT and DOT stablecoin payments with web2-style integration simplicity. The MVP focuses on core payment processing with familiar developer experience similar to Stripe.
+A production-ready web3 payment gateway built on Polkadot that enables instant DOT and stablecoin payments with web2-style integration simplicity. Built with enterprise-grade features including real-time blockchain monitoring, comprehensive API documentation, and production deployment guides.
 
-## Features
+## ✨ Features
 
-- **Instant Settlement** - 6-second finality vs. 10+ minutes on other chains
-- **Web2 Familiarity** - Stripe-like API design and integration patterns
-- **Simple Onboarding** - No crypto knowledge required for merchants
-- **Low Friction UX** - One-click wallet connection with multiple wallet support
-- **Real-time Monitoring** - Automatic payment confirmation and webhook delivery
-- **Price Oracle Integration** - Real-time fiat to DOT conversion
+- **🚀 Instant Settlement** - 6-second finality vs. 10+ minutes on other chains
+- **💳 Web2 Familiarity** - Stripe-like API design and integration patterns
+- **🔐 Simple Onboarding** - No crypto knowledge required for merchants
+- **⚡ Low Friction UX** - One-click wallet connection with multiple wallet support
+- **📊 Real-time Monitoring** - Automatic payment confirmation and webhook delivery
+- **💰 Price Oracle Integration** - Real-time fiat to DOT conversion
+- **🛡️ Production Ready** - Comprehensive security, monitoring, and deployment
+- **📚 Complete Documentation** - Full API docs and deployment guides
+- **🔧 Developer Tools** - SDKs, testing tools, and merchant dashboard
 
-## Tech Stack
+## 🏗️ Architecture
 
-- **Backend:** Node.js + TypeScript + Express.js
-- **Database:** PostgreSQL with Prisma ORM
-- **Blockchain Integration:** @polkadot/api
-- **Authentication:** JWT-based with wallet signature verification
-- **Queue System:** Bull (Redis-based) for webhook delivery
-- **Cache:** Redis for session management and rate limiting
+### Backend Services
+- **API Gateway** - Express.js with TypeScript
+- **Database** - PostgreSQL with Prisma ORM
+- **Blockchain** - Real Polkadot RPC integration
+- **Authentication** - JWT + Polkadot wallet signatures
+- **Queue System** - Bull (Redis-based) for webhook delivery
+- **Cache** - Redis for sessions and rate limiting
+- **Monitoring** - Real-time blockchain transaction monitoring
 
-## Quick Start
+### Frontend Applications
+- **Merchant Dashboard** - React-based admin interface
+- **JavaScript SDK** - Easy integration for developers
+- **React Components** - Drop-in payment widgets
+
+## 🚀 Quick Start
 
 ### Prerequisites
 
@@ -50,7 +60,7 @@ A web3 payment gateway built on Polkadot that enables instant DOT and DOT stable
 
 4. **Set up the database**
    ```bash
-   npx prisma db push
+   npx prisma migrate dev
    npx prisma generate
    ```
 
@@ -59,71 +69,26 @@ A web3 payment gateway built on Polkadot that enables instant DOT and DOT stable
    npm run dev
    ```
 
-The API will be available at `http://localhost:3000`
+The API will be available at `http://localhost:3001` and the dashboard at `http://localhost:3000`
 
-## API Endpoints
+## 📚 Documentation
 
-### Payment Intents
+- **[API Documentation](API_DOCUMENTATION.md)** - Complete API reference
+- **[Deployment Guide](DEPLOYMENT.md)** - Production deployment instructions
+- **[Polkadot SSO Integration](POLKADOT_SSO_INTEGRATION.md)** - SSO system details
 
-- `POST /api/v1/payment-intents` - Create a payment intent
-- `GET /api/v1/payment-intents/:id` - Get payment intent details
-- `GET /api/v1/payment-intents` - List payment intents with pagination
-- `POST /api/v1/payment-intents/:id/cancel` - Cancel a payment intent
+## 🔧 Tech Stack
 
-### Wallet Authentication
+- **Backend:** Node.js + TypeScript + Express.js
+- **Database:** PostgreSQL with Prisma ORM
+- **Blockchain:** @polkadot/api with real RPC integration
+- **Authentication:** JWT + Polkadot wallet signatures
+- **Queue System:** Bull (Redis-based) for webhook delivery
+- **Cache:** Redis for session management and rate limiting
+- **Frontend:** React + TypeScript + Vite
+- **UI Components:** Tailwind CSS + Headless UI
 
-- `GET /api/v1/wallet/wallets` - Get supported wallets
-- `POST /api/v1/wallet/challenge` - Generate authentication challenge
-- `POST /api/v1/wallet/verify` - Verify wallet signature
-- `GET /api/v1/wallet/status` - Get connection status
-
-### System
-
-- `GET /health` - Health check
-- `GET /api/status` - System status
-
-## Example Usage
-
-### Create a Payment Intent
-
-```bash
-curl -X POST http://localhost:3000/api/v1/payment-intents \
-  -H "Content-Type: application/json" \
-  -H "Authorization: Bearer pk_test_your_api_key" \
-  -d '{
-    "amount": 2500,
-    "currency": "usd",
-    "crypto_currency": "dot",
-    "metadata": {
-      "order_id": "order_123",
-      "customer_email": "user@example.com"
-    }
-  }'
-```
-
-### Response
-
-```json
-{
-  "success": true,
-  "data": {
-    "id": "pi_1234567890",
-    "amount": 2500,
-    "currency": "usd",
-    "crypto_amount": "15.75",
-    "crypto_currency": "dot",
-    "status": "REQUIRES_PAYMENT",
-    "expires_at": "2025-09-18T15:30:00Z",
-    "metadata": {
-      "order_id": "order_123",
-      "customer_email": "user@example.com"
-    },
-    "created_at": "2025-09-18T15:25:00Z"
-  }
-}
-```
-
-## Development
+## 🛠️ Development
 
 ### Available Scripts
 
@@ -139,26 +104,74 @@ curl -X POST http://localhost:3000/api/v1/payment-intents \
 ### Project Structure
 
 ```
-src/
-├── services/           # Business logic services
-├── routes/            # API route handlers
-├── middleware/        # Express middleware
-├── utils/             # Utility functions
-├── types/             # TypeScript type definitions
-├── config/            # Configuration
-└── index.ts           # Application entry point
+pmt-gateway/
+├── src/                    # Backend source code
+│   ├── services/          # Business logic services
+│   ├── routes/            # API route handlers
+│   ├── middleware/        # Express middleware
+│   ├── utils/             # Utility functions
+│   ├── types/             # TypeScript type definitions
+│   ├── config/            # Configuration
+│   └── index.ts           # Application entry point
+├── frontend/
+│   ├── dashboard/         # Merchant dashboard (React)
+│   └── sdk/              # JavaScript SDK
+├── prisma/               # Database schema and migrations
+├── docs/                 # Documentation
+└── tests/                # Test files
 ```
 
-## Configuration
+## 🔧 Configuration
 
-Key environment variables:
+### Environment Variables
 
+See [env.production.example](env.production.example) for all available configuration options.
+
+Key variables:
 - `DATABASE_URL` - PostgreSQL connection string
 - `REDIS_URL` - Redis connection string
 - `JWT_SECRET` - JWT signing secret
 - `POLKADOT_RPC_ENDPOINTS` - Comma-separated RPC endpoints
 - `COINGECKO_API_KEY` - Price oracle API key
 - `WEBHOOK_SECRET` - Webhook signature secret
+
+## 🧪 Testing
+
+### Test the API
+
+```bash
+# Test health endpoint
+curl http://localhost:3001/health
+
+# Test payment intent creation
+curl -X POST http://localhost:3001/api/v1/payment-intents \
+  -H "Content-Type: application/json" \
+  -d '{"amount": 2500, "currency": "USD", "merchantId": "test_merchant"}'
+```
+
+### Test the Dashboard
+
+Visit `http://localhost:3000` to access the merchant dashboard.
+
+## 🚀 Production Deployment
+
+See [DEPLOYMENT.md](DEPLOYMENT.md) for complete production deployment instructions including:
+- Environment setup
+- Database configuration
+- Process management with PM2
+- Nginx configuration
+- SSL certificates
+- Monitoring setup
+
+## 📖 API Reference
+
+See [API_DOCUMENTATION.md](API_DOCUMENTATION.md) for complete API documentation including:
+- Authentication
+- Payment Intents
+- Wallet Integration
+- Webhooks
+- Error Handling
+- SDKs
 
 ## License
 

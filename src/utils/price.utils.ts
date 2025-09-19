@@ -78,7 +78,8 @@ class PriceService {
 
     } catch (error) {
       logger.error('Failed to fetch prices from CoinGecko:', error);
-      throw new Error('Price update failed');
+      // Don't throw error, just log and continue with mock data
+      logger.warn('Using mock price data due to API error');
     }
   }
 

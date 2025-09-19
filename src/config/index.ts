@@ -41,6 +41,34 @@ export const config = {
   paymentExpirationMinutes: 5,
   maxRetryAttempts: 5,
   retryDelayMs: 1000,
+  
+  // Logging
+  logLevel: process.env['LOG_LEVEL'] || 'info',
+  logFormat: process.env['LOG_FORMAT'] || 'text',
+  
+  // Security
+  bcryptRounds: parseInt(process.env['BCRYPT_ROUNDS'] || '10', 10),
+  sessionSecret: process.env['SESSION_SECRET'] || '',
+  
+  // Monitoring
+  sentryDsn: process.env['SENTRY_DSN'] || '',
+  healthCheckInterval: parseInt(process.env['HEALTH_CHECK_INTERVAL'] || '30000', 10),
+  
+  // Email
+  smtpHost: process.env['SMTP_HOST'] || '',
+  smtpPort: parseInt(process.env['SMTP_PORT'] || '587', 10),
+  smtpUser: process.env['SMTP_USER'] || '',
+  smtpPass: process.env['SMTP_PASS'] || '',
+  fromEmail: process.env['FROM_EMAIL'] || '',
+  
+  // File Storage
+  uploadMaxSize: parseInt(process.env['UPLOAD_MAX_SIZE'] || '10485760', 10),
+  uploadAllowedTypes: process.env['UPLOAD_ALLOWED_TYPES']?.split(',') || ['image/jpeg', 'image/png'],
+  
+  // Feature Flags
+  enableWebhooks: process.env['ENABLE_WEBHOOKS'] === 'true',
+  enableAnalytics: process.env['ENABLE_ANALYTICS'] === 'true',
+  enableDebugMode: process.env['ENABLE_DEBUG_MODE'] === 'true',
 } as const;
 
 export type Config = typeof config;
