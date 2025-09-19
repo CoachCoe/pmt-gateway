@@ -1,0 +1,73 @@
+{
+  "name": "pmt-gateway",
+  "version": "1.0.0",
+  "description": "Polkadot Payment Gateway - Stripe-like payment processing for DOT and DOT stablecoins",
+  "main": "dist/index.js",
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "db:generate": "prisma generate",
+    "db:push": "prisma db push",
+    "db:migrate": "prisma migrate dev",
+    "db:studio": "prisma studio",
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "lint": "eslint src/**/*.ts",
+    "lint:fix": "eslint src/**/*.ts --fix"
+  },
+  "keywords": [
+    "polkadot",
+    "payment",
+    "gateway",
+    "crypto",
+    "blockchain",
+    "web3"
+  ],
+  "author": "PMT Gateway Team",
+  "license": "MIT",
+  "dependencies": {
+    "@polkadot/api": "^10.12.1",
+    "@polkadot/util": "^12.4.2",
+    "@polkadot/util-crypto": "^12.4.2",
+    "@polkadot/keyring": "^12.4.2",
+    "@prisma/client": "^5.7.1",
+    "express": "^4.18.2",
+    "cors": "^2.8.5",
+    "helmet": "^7.1.0",
+    "compression": "^1.7.4",
+    "express-rate-limit": "^7.1.5",
+    "bull": "^4.12.2",
+    "redis": "^4.6.12",
+    "jsonwebtoken": "^9.0.2",
+    "bcryptjs": "^2.4.3",
+    "zod": "^3.22.4",
+    "dotenv": "^16.3.1",
+    "winston": "^3.11.0",
+    "axios": "^1.6.2",
+    "uuid": "^9.0.1"
+  },
+  "devDependencies": {
+    "@types/node": "^20.10.4",
+    "@types/express": "^4.17.21",
+    "@types/cors": "^2.8.17",
+    "@types/compression": "^1.7.5",
+    "@types/jsonwebtoken": "^9.0.5",
+    "@types/bcryptjs": "^2.4.6",
+    "@types/uuid": "^9.0.7",
+    "@types/jest": "^29.5.8",
+    "@types/supertest": "^6.0.2",
+    "@typescript-eslint/eslint-plugin": "^6.13.1",
+    "@typescript-eslint/parser": "^6.13.1",
+    "eslint": "^8.54.0",
+    "jest": "^29.7.0",
+    "supertest": "^6.3.3",
+    "ts-jest": "^29.1.1",
+    "tsx": "^4.6.2",
+    "typescript": "^5.3.3",
+    "prisma": "^5.7.1"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
