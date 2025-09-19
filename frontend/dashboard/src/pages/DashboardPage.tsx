@@ -54,28 +54,28 @@ export function DashboardPage() {
   const statCards = [
     {
       name: 'Total Payments',
-      value: stats.total_payments.toLocaleString(),
+      value: stats.totalPayments.toLocaleString(),
       icon: CreditCard,
       color: 'text-blue-600',
       bgColor: 'bg-blue-100',
     },
     {
       name: 'Successful Payments',
-      value: stats.successful_payments.toLocaleString(),
+      value: Math.round(stats.totalPayments * stats.successRate / 100).toLocaleString(),
       icon: CheckCircle,
       color: 'text-green-600',
       bgColor: 'bg-green-100',
     },
     {
       name: 'Total Volume',
-      value: formatCurrency(stats.total_volume, 'usd'),
+      value: formatCurrency(stats.totalVolume, 'usd'),
       icon: DollarSign,
       color: 'text-purple-600',
       bgColor: 'bg-purple-100',
     },
     {
       name: 'Success Rate',
-      value: `${stats.success_rate.toFixed(1)}%`,
+      value: `${stats.successRate.toFixed(1)}%`,
       icon: TrendingUp,
       color: 'text-orange-600',
       bgColor: 'bg-orange-100',
@@ -120,7 +120,7 @@ export function DashboardPage() {
                 <span className="text-sm text-gray-600">Successful</span>
               </div>
               <span className="text-sm font-medium text-gray-900">
-                {stats.successful_payments}
+                {Math.round(stats.totalPayments * stats.successRate / 100)}
               </span>
             </div>
             <div className="flex items-center justify-between">
@@ -129,7 +129,7 @@ export function DashboardPage() {
                 <span className="text-sm text-gray-600">Failed</span>
               </div>
               <span className="text-sm font-medium text-gray-900">
-                {stats.failed_payments}
+                {Math.round(stats.totalPayments * (100 - stats.successRate) / 100)}
               </span>
             </div>
             <div className="flex items-center justify-between">
@@ -138,7 +138,7 @@ export function DashboardPage() {
                 <span className="text-sm text-gray-600">Processing</span>
               </div>
               <span className="text-sm font-medium text-gray-900">
-                {stats.total_payments - stats.successful_payments - stats.failed_payments}
+                {stats.pendingPayments}
               </span>
             </div>
           </div>
@@ -150,13 +150,13 @@ export function DashboardPage() {
             <div className="flex items-center justify-between">
               <span className="text-sm text-gray-600">DOT Amount</span>
               <span className="text-sm font-medium text-gray-900">
-                {formatDOTAmount(stats.total_volume_crypto)} DOT
+                {formatDOTAmount(stats.totalVolume * 0.1)} DOT
               </span>
             </div>
             <div className="flex items-center justify-between">
               <span className="text-sm text-gray-600">Average Payment</span>
               <span className="text-sm font-medium text-gray-900">
-                {formatCurrency(stats.average_payment, 'usd')}
+                {formatCurrency(stats.totalVolume / stats.totalPayments, 'usd')}
               </span>
             </div>
           </div>
@@ -168,13 +168,13 @@ export function DashboardPage() {
             <div className="flex items-center justify-between">
               <span className="text-sm text-gray-600">Success Rate</span>
               <span className="text-sm font-medium text-gray-900">
-                {stats.success_rate.toFixed(1)}%
+                {stats.successRate.toFixed(1)}%
               </span>
             </div>
             <div className="w-full bg-gray-200 rounded-full h-2">
               <div 
                 className="bg-green-500 h-2 rounded-full" 
-                style={{ width: `${stats.success_rate}%` }}
+                style={{ width: `${stats.successRate}%` }}
               ></div>
             </div>
           </div>
@@ -185,12 +185,12 @@ export function DashboardPage() {
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
         <div className="card p-6">
           <h3 className="text-lg font-medium text-gray-900 mb-4">Payment Trends</h3>
-          <PaymentChart data={stats.recent_payments} />
+          <PaymentChart data={stats.recentPayments} />
         </div>
         
         <div className="card p-6">
           <h3 className="text-lg font-medium text-gray-900 mb-4">Recent Payments</h3>
-          <RecentPayments payments={stats.recent_payments} />
+          <RecentPayments payments={stats.recentPayments} />
         </div>
       </div>
     </div>

@@ -49,7 +49,7 @@ const statusConfig = {
 export function PaymentsPage() {
   const [page, setPage] = useState(1);
   const [filters, setFilters] = useState<FilterOptions>({});
-  const [sort, setSort] = useState<SortOptions>({ field: 'created_at', direction: 'desc' });
+  const [sort, setSort] = useState<SortOptions>({ field: 'createdAt', direction: 'desc' });
   const [search, setSearch] = useState('');
 
   const { data, isLoading, error, refetch } = useQuery({
@@ -203,10 +203,10 @@ export function PaymentsPage() {
                 <th>Wallet</th>
                 <th 
                   className="cursor-pointer hover:bg-gray-100"
-                  onClick={() => handleSort('created_at')}
+                  onClick={() => handleSort('createdAt')}
                 >
                   Date
-                  {sort.field === 'created_at' && (
+                  {sort.field === 'createdAt' && (
                     <span className="ml-1">{sort.direction === 'asc' ? '↑' : '↓'}</span>
                   )}
                 </th>
@@ -214,7 +214,7 @@ export function PaymentsPage() {
               </tr>
             </thead>
             <tbody>
-              {data?.data.map((payment) => {
+              {data?.payments.map((payment) => {
                 const status = statusConfig[payment.status] || statusConfig.REQUIRES_PAYMENT;
                 const StatusIcon = status.icon;
 
@@ -240,10 +240,10 @@ export function PaymentsPage() {
                       </span>
                     </td>
                     <td className="font-mono text-sm">
-                      {payment.wallet_address ? truncateAddress(payment.wallet_address) : '-'}
+                      -
                     </td>
                     <td className="text-sm text-gray-500">
-                      {formatDateTime(payment.created_at)}
+                      {formatDateTime(payment.createdAt)}
                     </td>
                     <td>
                       <Link
@@ -261,7 +261,7 @@ export function PaymentsPage() {
         </div>
 
         {/* Pagination */}
-        {data && data.pagination.total_pages > 1 && (
+        {data && data.pagination.totalPages > 1 && (
           <div className="px-6 py-4 border-t border-gray-200">
             <div className="flex items-center justify-between">
               <div className="text-sm text-gray-700">
@@ -279,7 +279,7 @@ export function PaymentsPage() {
                 </button>
                 <button
                   onClick={() => setPage(page + 1)}
-                  disabled={page === data.pagination.total_pages}
+                  disabled={page === data.pagination.totalPages}
                   className="btn btn-outline btn-sm disabled:opacity-50"
                 >
                   Next

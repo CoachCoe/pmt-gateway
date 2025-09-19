@@ -9,7 +9,7 @@ interface PaymentChartProps {
 export function PaymentChart({ data }: PaymentChartProps) {
   // Group payments by date and calculate daily totals
   const chartData = data.reduce((acc, payment) => {
-    const date = payment.created_at.split('T')[0];
+    const date = payment.createdAt.split('T')[0];
     const existing = acc.find(item => item.date === date);
     
     if (existing) {
@@ -20,7 +20,7 @@ export function PaymentChart({ data }: PaymentChartProps) {
         date,
         amount: payment.amount,
         count: 1,
-        formattedDate: formatDate(payment.created_at),
+        formattedDate: formatDate(payment.createdAt),
       });
     }
     

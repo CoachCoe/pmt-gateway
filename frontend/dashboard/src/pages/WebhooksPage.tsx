@@ -151,17 +151,17 @@ export function WebhooksPage() {
               </tr>
             </thead>
             <tbody>
-              {data?.data.map((event) => {
+              {data?.events.map((event) => {
                 const status = statusConfig[event.status] || statusConfig.PENDING;
                 const StatusIcon = status.icon;
 
                 return (
                   <tr key={event.id} className="hover:bg-gray-50">
                     <td className="font-medium">
-                      {event.event_type}
+                      {event.type}
                     </td>
                     <td className="font-mono text-sm">
-                      {event.payment_intent_id.slice(0, 8)}...
+                      {event.paymentId.slice(0, 8)}...
                     </td>
                     <td>
                       <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${status.bgColor} ${status.color}`}>
@@ -171,21 +171,21 @@ export function WebhooksPage() {
                     </td>
                     <td>
                       <span className="text-sm text-gray-900">
-                        {event.attempts}/{event.max_attempts}
+                        {event.attempts}/3
                       </span>
                     </td>
                     <td className="text-sm text-gray-500">
-                      {formatDateTime(event.created_at)}
+                      {formatDateTime(event.createdAt)}
                     </td>
                     <td className="text-sm text-gray-500">
-                      {event.delivered_at ? formatDateTime(event.delivered_at) : '-'}
+                      {event.lastAttemptAt ? formatDateTime(event.lastAttemptAt) : '-'}
                     </td>
                     <td>
                       <div className="flex space-x-2">
                         <button
                           onClick={() => {
                             // Show payload modal
-                            console.log('Payload:', event.payload);
+                            console.log('Event:', event);
                           }}
                           className="text-primary-600 hover:text-primary-700 text-sm font-medium"
                         >

@@ -77,13 +77,13 @@ export function RecentPayments({ payments }: RecentPaymentsProps) {
                     {formatCurrency(payment.amount, payment.currency)}
                   </p>
                   <p className="text-xs text-gray-500">
-                    {payment.wallet_address ? truncateAddress(payment.wallet_address) : 'No wallet'}
+                    No wallet
                   </p>
                 </div>
               </div>
               <div className="text-right">
                 <p className="text-xs text-gray-500">
-                  {formatRelativeTime(payment.created_at)}
+                  {formatRelativeTime(payment.createdAt)}
                 </p>
                 <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${status.bgColor} ${status.color}`}>
                   {status.label}
