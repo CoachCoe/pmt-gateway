@@ -30,6 +30,15 @@ export class PaymentService {
       // Validate input
       this.validatePaymentIntentInput(input);
 
+      // Validate merchant exists
+      const merchant = await this.prisma.merchant.findUnique({
+        where: { id: merchantId }
+      });
+
+      if (!merchant) {
+        throw new Error('Merchant not found');
+      }
+
       // Convert fiat amount to DOT
       const cryptoAmount = priceService.convertFiatToDOT(
         input.amount, 

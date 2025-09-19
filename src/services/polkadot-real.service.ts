@@ -1,6 +1,5 @@
 import { ApiPromise, WsProvider } from '@polkadot/api';
 import { Keyring } from '@polkadot/keyring';
-import { u8aToHex } from '@polkadot/util';
 import { config } from '@/config';
 import logger from '@/utils/logger';
 
@@ -16,11 +15,9 @@ export interface PolkadotTransaction {
 export class PolkadotRealService {
   private api: ApiPromise | null = null;
   private isConnected = false;
-  private keyring: Keyring;
   private unsubscribe: (() => void) | null = null;
 
   constructor() {
-    this.keyring = new Keyring({ type: 'sr25519' });
     // Start connection in background - don't block constructor
     this.connect().catch(error => {
       logger.error('Failed to connect to Polkadot network in background:', error);
@@ -79,11 +76,13 @@ export class PolkadotRealService {
       throw new Error('Polkadot API not ready');
     }
 
+    const api = this.api; // TypeScript guard
+
     try {
       logger.info('Getting balance for address:', { address });
       
-      const accountInfo = await this.api.query.system.account(address);
-      const balance = accountInfo.data.free.toString();
+      const accountInfo = await (api.query as any)['system']['account'](address);
+      const balance = (accountInfo as any).data.free.toString();
       
       logger.debug('Balance retrieved:', { address, balance });
       return balance;
@@ -98,16 +97,18 @@ export class PolkadotRealService {
       throw new Error('Polkadot API not ready');
     }
 
+    const api = this.api; // TypeScript guard
+
     try {
       logger.info('Getting account info for address:', { address });
       
-      const accountInfo = await this.api.query.system.account(address);
+      const accountInfo = await (api.query as any)['system']['account'](address);
       
       return {
-        nonce: accountInfo.nonce.toString(),
-        free: accountInfo.data.free.toString(),
-        reserved: accountInfo.data.reserved.toString(),
-        frozen: accountInfo.data.frozen.toString(),
+        nonce: (accountInfo as any).nonce.toString(),
+        free: (accountInfo as any).data.free.toString(),
+        reserved: (accountInfo as any).data.reserved.toString(),
+        frozen: (accountInfo as any).data.frozen.toString(),
       };
     } catch (error) {
       logger.error('Failed to get account info:', { address, error });
@@ -193,8 +194,8 @@ export class PolkadotRealService {
               // Check if this is a transfer extrinsic
               if (extrinsic.method.section === 'balances' && extrinsic.method.method === 'transfer') {
                 const args = extrinsic.method.args;
-                const to = args[0].toString();
-                const amount = args[1].toString();
+                const to = args[0]?.toString() || '';
+                const amount = args[1]?.toString() || '';
                 
                 // Check if this transfer is to our target address
                 if (to === targetAddress && amount === expectedAmount) {

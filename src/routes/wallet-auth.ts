@@ -487,6 +487,7 @@ export class WalletAuthRoutes {
     }
   }
 
+
   public getRouter(): Router {
     return this.router;
   }
