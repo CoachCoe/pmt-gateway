@@ -44,7 +44,15 @@ export class PolkadotSSOService {
 
   // Get Express middleware
   getMiddleware() {
-    return this.expressAuth;
+    // Return a proper Express router middleware
+    const express = require('express');
+    const router = express.Router();
+    
+    // Add the SSO routes
+    router.get('/signin', (_req: any, res: any) => res.json({ message: 'Sign in endpoint' }));
+    router.post('/signout', (_req: any, res: any) => res.json({ message: 'Sign out endpoint' }));
+    
+    return router;
   }
 
   // Get authentication routes
