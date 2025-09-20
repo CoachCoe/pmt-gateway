@@ -206,38 +206,42 @@ This request will not trigger a blockchain transaction or cost any gas fees.`;
     }
   }
 
-  public getSupportedWallets(): Array<{
+  public async getSupportedWallets(): Promise<Array<{
     id: string;
     name: string;
     icon: string;
     downloadUrl: string;
-  }> {
-    return [
-      {
-        id: 'polkadot-js',
-        name: 'Polkadot.js',
-        icon: 'polkadot-js',
-        downloadUrl: 'https://polkadot.js.org/extension/',
-      },
-      {
-        id: 'talisman',
-        name: 'Talisman',
-        icon: 'talisman',
-        downloadUrl: 'https://talisman.xyz/',
-      },
-      {
-        id: 'subwallet',
-        name: 'SubWallet',
-        icon: 'subwallet',
-        downloadUrl: 'https://subwallet.app/',
-      },
-      {
-        id: 'nova-wallet',
-        name: 'Nova Wallet',
-        icon: 'nova-wallet',
-        downloadUrl: 'https://novawallet.io/',
-      },
-    ];
+  }>> {
+    try {
+      // Use Polkadot SSO service for supported wallets
+      const ssoWallets = await polkadotSSOService.getSupportedWallets();
+      
+      // Convert SSO format to API format
+      return ssoWallets.map(wallet => ({
+        id: wallet.id,
+        name: wallet.name,
+        icon: wallet.icon,
+        downloadUrl: wallet.downloadUrl || `https://${wallet.id}.com/`,
+      }));
+    } catch (error) {
+      logger.error('Failed to get supported wallets from SSO service, using fallback', { error });
+      
+      // Fallback to basic wallets
+      return [
+        {
+          id: 'polkadot-js',
+          name: 'Polkadot.js Extension',
+          icon: 'polkadot-js',
+          downloadUrl: 'https://polkadot.js.org/extension/',
+        },
+        {
+          id: 'papi',
+          name: 'PAPI Wallet',
+          icon: 'papi',
+          downloadUrl: 'https://papi.com/',
+        },
+      ];
+    }
   }
 }
 
