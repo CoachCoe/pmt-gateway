@@ -165,8 +165,8 @@ export class PolkadotSSOService {
                   if (providerId === 'polkadot-js') {
                     const extension = window.injectedWeb3['polkadot-js'];
                     const injected = await extension.enable('PMT Gateway');
-                    const api = await injected.accounts.get();
-                    accounts = api;
+                    const accountsApi = await injected.accounts.get();
+                    accounts = accountsApi;
                   } else if (providerId === 'papi') {
                     // PAPI integration would go here
                     console.log('PAPI integration not yet implemented');
@@ -185,10 +185,33 @@ export class PolkadotSSOService {
 
                   // Sign the challenge message
                   try {
-                    const signature = await accounts[0].signRaw({
-                      address: accountAddress,
-                      data: challengeData.challenge,
-                    });
+                    // Get the signer from the extension
+                    const extension = window.injectedWeb3['polkadot-js'];
+                    const injected = await extension.enable('PMT Gateway');
+                    
+                    // Debug: Log available methods
+                    console.log('Available methods:', Object.keys(injected));
+                    console.log('Signer methods:', injected.signer ? Object.keys(injected.signer) : 'No signer');
+                    console.log('Accounts methods:', injected.accounts ? Object.keys(injected.accounts) : 'No accounts');
+                    
+                    // Try different signing methods
+                    let signature;
+                    
+                    if (injected.signer && injected.signer.signRaw) {
+                      // Method 1: Use signer.signRaw
+                      signature = await injected.signer.signRaw({
+                        address: accountAddress,
+                        data: challengeData.challenge,
+                      });
+                    } else if (injected.accounts && injected.accounts.signRaw) {
+                      // Method 2: Use accounts.signRaw
+                      signature = await injected.accounts.signRaw({
+                        address: accountAddress,
+                        data: challengeData.challenge,
+                      });
+                    } else {
+                      throw new Error('No signing method available in this extension version');
+                    }
                     
                     console.log('Signature created:', signature.signature);
                     
