@@ -106,21 +106,46 @@ export class PolkadotSSOService {
             </div>
 
             <h2>Available Wallets:</h2>
+            <div id="walletStatus" style="margin: 10px 0; padding: 10px; background: #f0f0f0; border-radius: 5px; font-size: 14px;">
+              <div>Checking wallet availability...</div>
+            </div>
             ${providers
               .map(
                 (provider: any) => `
-              <div class="provider" onclick="connectWallet('${provider.id}')">
+              <div class="provider" onclick="connectWallet('${provider.id}')" id="provider-${provider.id}">
                 <strong>${provider.name}</strong>
                 ${provider.description ? `<br><small>${provider.description}</small>` : ''}
+                <div id="status-${provider.id}" style="margin-top: 5px; font-size: 12px; color: #666;">Checking...</div>
               </div>
             `
               )
               .join('')}
 
             <script>
+              // Check if Polkadot.js extension is available
+              function isPolkadotJsAvailable() {
+                return typeof window !== 'undefined' && window.injectedWeb3 && window.injectedWeb3['polkadot-js'];
+              }
+
+              // Check if PAPI is available
+              function isPAPIAvailable() {
+                return typeof window !== 'undefined' && window.papi;
+              }
+
               async function connectWallet(providerId) {
                 try {
                   const chainId = document.getElementById('chainSelect').value;
+                  
+                  // Check if wallet is available
+                  if (providerId === 'polkadot-js' && !isPolkadotJsAvailable()) {
+                    alert('Polkadot.js extension not found. Please install it from https://polkadot.js.org/extension/');
+                    return;
+                  }
+                  
+                  if (providerId === 'papi' && !isPAPIAvailable()) {
+                    alert('PAPI wallet not found. Please install it or use Polkadot.js extension.');
+                    return;
+                  }
 
                   // Get challenge
                   const challengeResponse = await fetch('/auth/challenge?client_id=pmt-gateway&chain_id=' + chainId);
@@ -131,18 +156,128 @@ export class PolkadotSSOService {
                     return;
                   }
 
-                  // TODO: Connect to wallet and sign message
                   console.log('Connecting to', providerId);
                   console.log('Challenge:', challengeData.challenge);
 
-                  // For now, just show the challenge
-                  alert('Challenge: ' + challengeData.challenge);
+                  // Connect to wallet and get accounts
+                  let accounts = [];
+                  
+                  if (providerId === 'polkadot-js') {
+                    const extension = window.injectedWeb3['polkadot-js'];
+                    const injected = await extension.enable('PMT Gateway');
+                    const accountsApi = await injected.accounts.get();
+                    accounts = accountsApi;
+                  } else if (providerId === 'papi') {
+                    // PAPI integration would go here
+                    console.log('PAPI integration not yet implemented');
+                    alert('PAPI integration coming soon. Please use Polkadot.js extension for now.');
+                    return;
+                  }
+
+                  if (accounts.length === 0) {
+                    alert('No accounts found. Please create an account in your wallet first.');
+                    return;
+                  }
+
+                  // Let user select account
+                  const accountAddress = accounts[0].address;
+                  console.log('Selected account:', accountAddress);
+
+                  // Sign the challenge message
+                  try {
+                    // Get the signer from the extension
+                    const extension = window.injectedWeb3['polkadot-js'];
+                    const injected = await extension.enable('PMT Gateway');
+                    
+                    // Debug: Log available methods
+                    console.log('Available methods:', Object.keys(injected));
+                    console.log('Signer methods:', injected.signer ? Object.keys(injected.signer) : 'No signer');
+                    console.log('Accounts methods:', injected.accounts ? Object.keys(injected.accounts) : 'No accounts');
+                    
+                    // Try different signing methods
+                    let signature;
+                    
+                    if (injected.signer && injected.signer.signRaw) {
+                      // Method 1: Use signer.signRaw
+                      signature = await injected.signer.signRaw({
+                        address: accountAddress,
+                        data: challengeData.challenge,
+                      });
+                    } else if (injected.accounts && injected.accounts.signRaw) {
+                      // Method 2: Use accounts.signRaw
+                      signature = await injected.accounts.signRaw({
+                        address: accountAddress,
+                        data: challengeData.challenge,
+                      });
+                    } else {
+                      throw new Error('No signing method available in this extension version');
+                    }
+                    
+                    console.log('Signature created:', signature.signature);
+                    
+                    // Send signature to server for verification
+                    const verifyResponse = await fetch('/auth/verify', {
+                      method: 'POST',
+                      headers: {
+                        'Content-Type': 'application/json',
+                      },
+                      body: JSON.stringify({
+                        challenge_id: challengeData.challenge_id,
+                        signature: signature.signature,
+                        address: accountAddress,
+                        message: challengeData.challenge,
+                      }),
+                    });
+                    
+                    const verifyResult = await verifyResponse.json();
+                    
+                    if (verifyResult.success) {
+                      alert('🎉 Authentication successful!\\n\\nAccount: ' + accountAddress + '\\nSession: ' + verifyResult.session.id + '\\n\\nYou are now signed in!');
+                      
+                      // In a real app, you would redirect or update UI here
+                      console.log('Authentication complete:', verifyResult);
+                    } else {
+                      alert('❌ Authentication failed: ' + verifyResult.error);
+                    }
+                    
+                  } catch (signError) {
+                    console.error('Signing error:', signError);
+                    alert('❌ Failed to sign message: ' + signError.message);
+                  }
 
                 } catch (error) {
                   console.error('Error:', error);
-                  alert('Failed to connect wallet');
+                  alert('Failed to connect wallet: ' + error.message);
                 }
               }
+
+              // Show wallet availability status
+              window.addEventListener('load', function() {
+                const polkadotJsStatus = isPolkadotJsAvailable() ? '✅ Available' : '❌ Not installed';
+                const papiStatus = isPAPIAvailable() ? '✅ Available' : '❌ Not available';
+                
+                // Update status display
+                const statusDiv = document.getElementById('walletStatus');
+                const polkadotJsStatusDiv = document.getElementById('status-polkadot-js');
+                const papiStatusDiv = document.getElementById('status-papi');
+                
+                if (statusDiv) {
+                  statusDiv.innerHTML = \`Polkadot.js: \${polkadotJsStatus} | PAPI: \${papiStatus}\`;
+                }
+                
+                if (polkadotJsStatusDiv) {
+                  polkadotJsStatusDiv.textContent = polkadotJsStatus;
+                  polkadotJsStatusDiv.style.color = isPolkadotJsAvailable() ? '#28a745' : '#dc3545';
+                }
+                
+                if (papiStatusDiv) {
+                  papiStatusDiv.textContent = papiStatus;
+                  papiStatusDiv.style.color = isPAPIAvailable() ? '#28a745' : '#dc3545';
+                }
+                
+                console.log('Polkadot.js Extension:', polkadotJsStatus);
+                console.log('PAPI Wallet:', papiStatus);
+              });
             </script>
           </body>
         </html>
@@ -268,24 +403,14 @@ Expiration Time: ${expiresAt.toISOString()}`;
         name: 'Polkadot.js Extension',
         description: 'Official Polkadot browser extension',
         icon: 'polkadot-js-icon',
+        extensionId: 'nhnlbodnbfbebdjdijclmlogilapodkh',
       },
       {
-        id: 'talisman',
-        name: 'Talisman',
-        description: 'Talisman wallet extension',
-        icon: 'talisman-icon',
-      },
-      {
-        id: 'subwallet',
-        name: 'SubWallet',
-        description: 'SubWallet extension',
-        icon: 'subwallet-icon',
-      },
-      {
-        id: 'nova',
-        name: 'Nova Wallet',
-        description: 'Nova Wallet mobile app with browser bridge',
-        icon: 'nova-icon',
+        id: 'papi',
+        name: 'PAPI Wallet',
+        description: 'Polkadot Asset Portal Interface',
+        icon: 'papi-icon',
+        extensionId: 'papi-extension',
       },
     ];
   }
