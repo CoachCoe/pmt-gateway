@@ -183,13 +183,44 @@ export class PolkadotSSOService {
                   const accountAddress = accounts[0].address;
                   console.log('Selected account:', accountAddress);
 
-                  // For now, show success message
-                  alert('Wallet connected successfully!\\n\\nAccount: ' + accountAddress + '\\nChallenge: ' + challengeData.challenge + '\\n\\nIn a real implementation, you would sign the challenge here.');
-
-                  // In a real implementation, you would:
-                  // 1. Ask user to sign the challenge message
-                  // 2. Send the signature to /auth/verify
-                  // 3. Handle the response and redirect
+                  // Sign the challenge message
+                  try {
+                    const signature = await accounts[0].signRaw({
+                      address: accountAddress,
+                      data: challengeData.challenge,
+                    });
+                    
+                    console.log('Signature created:', signature.signature);
+                    
+                    // Send signature to server for verification
+                    const verifyResponse = await fetch('/auth/verify', {
+                      method: 'POST',
+                      headers: {
+                        'Content-Type': 'application/json',
+                      },
+                      body: JSON.stringify({
+                        challenge_id: challengeData.challenge_id,
+                        signature: signature.signature,
+                        address: accountAddress,
+                        message: challengeData.challenge,
+                      }),
+                    });
+                    
+                    const verifyResult = await verifyResponse.json();
+                    
+                    if (verifyResult.success) {
+                      alert('🎉 Authentication successful!\\n\\nAccount: ' + accountAddress + '\\nSession: ' + verifyResult.session.id + '\\n\\nYou are now signed in!');
+                      
+                      // In a real app, you would redirect or update UI here
+                      console.log('Authentication complete:', verifyResult);
+                    } else {
+                      alert('❌ Authentication failed: ' + verifyResult.error);
+                    }
+                    
+                  } catch (signError) {
+                    console.error('Signing error:', signError);
+                    alert('❌ Failed to sign message: ' + signError.message);
+                  }
 
                 } catch (error) {
                   console.error('Error:', error);
