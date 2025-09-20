@@ -44,7 +44,7 @@ class Application {
         directives: {
           defaultSrc: ["'self'"],
           styleSrc: ["'self'", "'unsafe-inline'"],
-          scriptSrc: ["'self'"],
+          scriptSrc: ["'self'", "'unsafe-inline'"],
           imgSrc: ["'self'", "data:", "https:"],
         },
       },
@@ -115,6 +115,11 @@ class Application {
           request_id: req.headers['x-request-id'] as string || 'unknown',
         },
       });
+    });
+
+    // Favicon
+    this.app.get('/favicon.ico', (_req, res) => {
+      res.status(204).end();
     });
 
     // API status endpoint
