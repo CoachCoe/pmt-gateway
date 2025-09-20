@@ -66,12 +66,12 @@ export class WalletAuthService {
       // First try Polkadot SSO verification
       try {
         const verificationResult = await polkadotSSOService.verifySignature(
+          response.signature,
           {
             message: response.challenge.message,
             nonce: response.challenge.nonce,
             timestamp: response.challenge.timestamp,
           },
-          response.signature,
           response.address
         );
 

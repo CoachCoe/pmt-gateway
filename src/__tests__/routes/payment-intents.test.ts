@@ -9,7 +9,7 @@ import { PrismaClient } from '@prisma/client';
 // Mock the auth middleware
 jest.mock('@/middleware/auth.middleware', () => ({
   AuthMiddleware: jest.fn().mockImplementation(() => ({
-    requireAuth: (req: any, res: any, next: any) => {
+    requireAuth: (req: any, _res: any, next: any) => {
       req.user = { merchantId: 'test-merchant-id' };
       next();
     },

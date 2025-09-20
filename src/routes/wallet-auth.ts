@@ -109,7 +109,7 @@ export class WalletAuthRoutes {
       
       logger.info('Getting supported chains', { requestId });
 
-      const chains = polkadotSSOService.getSupportedChains();
+      const chains = await polkadotSSOService.getSupportedChains();
 
       res.json({
         success: true,
@@ -263,13 +263,12 @@ export class WalletAuthRoutes {
       let sessionId = verificationResult.sessionId;
       if (!sessionId) {
         // Create session manually if not provided by SSO
-        const session = await polkadotSSOService.createSession({
+        const session = await polkadotSSOService.createSession(
           address,
           chainId,
-          walletType: verificationResult.walletType || 'unknown',
-          merchantId,
-        });
-        sessionId = session.id;
+          verificationResult.walletType || 'unknown'
+        );
+        sessionId = session.sessionId;
       }
 
       // Create wallet session token
