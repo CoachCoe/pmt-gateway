@@ -44,7 +44,30 @@ describe('Wallet Auth Routes', () => {
     prisma = await TestHelpers.getPrisma();
     const authService = new AuthService(prisma);
     
-    const walletAuthRoutes = new WalletAuthRoutes(authService, {} as any);
+    // Create a proper mock auth middleware
+    const authMiddleware = {
+      optionalAuth: (_req: any, _res: any, next: any) => {
+        // Mock optional auth - just call next
+        next();
+      },
+      requireAuth: (_req: any, _res: any, next: any) => {
+        next();
+      },
+      requireMerchant: (_req: any, _res: any, next: any) => {
+        next();
+      },
+      requireWallet: (_req: any, _res: any, next: any) => {
+        next();
+      },
+      authenticateApiKey: (_req: any, _res: any, next: any) => {
+        next();
+      },
+      authenticateWallet: (_req: any, _res: any, next: any) => {
+        next();
+      }
+    };
+    
+    const walletAuthRoutes = new WalletAuthRoutes(authService, authMiddleware as any);
 
     app = express();
     app.use(express.json());

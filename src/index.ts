@@ -6,6 +6,12 @@ import { PrismaClient } from '@prisma/client';
 import { config } from '@/config';
 import logger from '@/utils/logger';
 import { generalRateLimit } from '@/middleware/rate-limit.middleware';
+import { 
+  errorHandler, 
+  notFoundHandler, 
+  correlationIdMiddleware 
+} from '@/middleware/error.middleware';
+import { sessionCleanupJob } from '@/jobs/session-cleanup.job';
 
 // Import services
 import { PaymentService } from '@/services/payment.service';
@@ -66,14 +72,8 @@ class Application {
     this.app.use(express.json({ limit: '10mb' }));
     this.app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
-    // Request ID middleware
-    this.app.use((req, res, next) => {
-      if (!req.headers['x-request-id']) {
-        req.headers['x-request-id'] = require('uuid').v4() as string;
-      }
-      res.setHeader('X-Request-ID', req.headers['x-request-id'] as string);
-      next();
-    });
+    // Correlation ID middleware
+    this.app.use(correlationIdMiddleware);
 
     // Request logging
     this.app.use((req, _res, next) => {
@@ -193,44 +193,12 @@ class Application {
     ).getRouter());
 
     // 404 handler
-    this.app.use('*', (req, _res) => {
-      _res.status(404).json({
-        success: false,
-        error: {
-          code: 'NOT_FOUND',
-          message: 'Endpoint not found',
-        },
-        meta: {
-          timestamp: new Date().toISOString(),
-          request_id: req.headers['x-request-id'] as string || 'unknown',
-        },
-      });
-    });
+    this.app.use('*', notFoundHandler);
   }
 
   private setupErrorHandling(): void {
     // Global error handler
-    this.app.use((error: any, req: express.Request, res: express.Response, _next: express.NextFunction) => {
-      logger.error('Unhandled error:', {
-        error: error.message,
-        stack: error.stack,
-        requestId: req.headers['x-request-id'],
-        path: req.path,
-        method: req.method,
-      });
-
-      res.status(500).json({
-        success: false,
-        error: {
-          code: 'INTERNAL_SERVER_ERROR',
-          message: 'An unexpected error occurred',
-        },
-        meta: {
-          timestamp: new Date().toISOString(),
-          request_id: req.headers['x-request-id'] as string || 'unknown',
-        },
-      });
-    });
+    this.app.use(errorHandler);
   }
 
   public async start(): Promise<void> {
@@ -258,6 +226,9 @@ class Application {
         });
       });
 
+      // Start session cleanup job
+      sessionCleanupJob.start();
+
       // Graceful shutdown
       process.on('SIGTERM', this.shutdown.bind(this));
       process.on('SIGINT', this.shutdown.bind(this));
@@ -272,6 +243,9 @@ class Application {
     logger.info('Shutting down application...');
 
     try {
+      // Stop session cleanup job
+      sessionCleanupJob.stop();
+
       // Close server
       if (this.server) {
         this.server.close(() => {

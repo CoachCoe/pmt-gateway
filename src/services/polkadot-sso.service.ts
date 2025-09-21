@@ -1,6 +1,11 @@
 // Integration with polkadot-sso repository
 // Using source code directly since packages are not built yet
 import logger from '@/utils/logger';
+import { 
+  generateSecureSessionId, 
+  generateSecureNonce, 
+  generateSecureChallengeId 
+} from '@/utils/crypto.utils';
 
 export class PolkadotSSOService {
 
@@ -27,21 +32,47 @@ export class PolkadotSSOService {
       try {
         const { client_id, address, chain_id } = req.query;
 
-        if (!client_id) {
-          return res.status(400).json({ error: 'client_id is required' });
+        // Input validation
+        if (!client_id || typeof client_id !== 'string') {
+          return res.status(400).json({ 
+            success: false,
+            error: {
+              code: 'INVALID_CLIENT_ID',
+              message: 'Valid client_id is required'
+            }
+          });
+        }
+
+        if (address && !this.validateAddress(address)) {
+          return res.status(400).json({
+            success: false,
+            error: {
+              code: 'INVALID_ADDRESS',
+              message: 'Invalid Polkadot address format'
+            }
+          });
         }
 
         const challenge = this._createChallenge(address, chain_id || 'polkadot');
         
         res.json({
-          challenge: challenge.message,
-          challenge_id: challenge.id,
-          nonce: challenge.nonce,
-          expires_at: challenge.expiresAt,
+          success: true,
+          data: {
+            challenge: challenge.message,
+            challenge_id: challenge.id,
+            nonce: challenge.nonce,
+            expires_at: challenge.expiresAt,
+          }
         });
       } catch (error) {
         logger.error('Error creating challenge:', error);
-        res.status(500).json({ error: 'Failed to create challenge' });
+        res.status(500).json({ 
+          success: false,
+          error: {
+            code: 'CHALLENGE_CREATION_FAILED',
+            message: 'Failed to create challenge'
+          }
+        });
       }
     });
 
@@ -50,9 +81,44 @@ export class PolkadotSSOService {
       try {
         const { challenge_id, signature, address, message } = req.body;
 
-        if (!challenge_id || !signature || !address || !message) {
+        // Input validation
+        if (!challenge_id || typeof challenge_id !== 'string') {
           return res.status(400).json({
-            error: 'challenge_id, signature, address, and message are required',
+            success: false,
+            error: {
+              code: 'INVALID_CHALLENGE_ID',
+              message: 'Valid challenge_id is required'
+            }
+          });
+        }
+
+        if (!signature || typeof signature !== 'string') {
+          return res.status(400).json({
+            success: false,
+            error: {
+              code: 'INVALID_SIGNATURE',
+              message: 'Valid signature is required'
+            }
+          });
+        }
+
+        if (!address || !this.validateAddress(address)) {
+          return res.status(400).json({
+            success: false,
+            error: {
+              code: 'INVALID_ADDRESS',
+              message: 'Valid Polkadot address is required'
+            }
+          });
+        }
+
+        if (!message || typeof message !== 'string') {
+          return res.status(400).json({
+            success: false,
+            error: {
+              code: 'INVALID_MESSAGE',
+              message: 'Valid message is required'
+            }
           });
         }
 
@@ -61,19 +127,33 @@ export class PolkadotSSOService {
         if (result.valid) {
           res.json({
             success: true,
-            message: 'Authentication successful',
-            session: {
-              id: result.sessionId || Math.random().toString(36).substring(2),
-              address: address,
-              accessToken: Math.random().toString(36).substring(2),
-            },
+            data: {
+              message: 'Authentication successful',
+              session: {
+                id: result.sessionId,
+                address: address,
+                accessToken: this.generateSecureSessionId(),
+              },
+            }
           });
         } else {
-          res.status(401).json({ error: 'Invalid signature' });
+          res.status(401).json({ 
+            success: false,
+            error: {
+              code: 'INVALID_SIGNATURE',
+              message: 'Signature verification failed'
+            }
+          });
         }
       } catch (error) {
         logger.error('Error verifying signature:', error);
-        res.status(500).json({ error: 'Failed to verify signature' });
+        res.status(500).json({ 
+          success: false,
+          error: {
+            code: 'SIGNATURE_VERIFICATION_FAILED',
+            message: 'Failed to verify signature'
+          }
+        });
       }
     });
 
@@ -299,8 +379,8 @@ export class PolkadotSSOService {
 
   // Create a challenge for wallet authentication
   _createChallenge(address?: string, chainId: string = 'polkadot'): any {
-    const nonce = Math.random().toString(36).substring(2);
-    const challengeId = Math.random().toString(36).substring(2);
+    const nonce = generateSecureNonce();
+    const challengeId = generateSecureChallengeId();
     const now = new Date();
     const expiresAt = new Date(now.getTime() + 5 * 60 * 1000); // 5 minutes
 
@@ -326,19 +406,21 @@ Expiration Time: ${expiresAt.toISOString()}`;
   // Verify a signature against a challenge
   _verifySignature(signature: string, challenge: any, address: string): any {
     try {
-      // For now, we'll do basic validation
-      // In a real implementation, this would verify the signature using Polkadot crypto
       if (!signature || !challenge || !address) {
         return { valid: false, walletType: null, sessionId: null };
       }
 
-      // Mock verification - in reality, this would use @polkadot/util-crypto
-      const isValid = signature.length > 0 && challenge.message && address.length > 0;
+      // Use proper cryptographic verification
+      const isValid = this.verifyPolkadotSignature(
+        challenge.message,
+        signature,
+        address
+      );
       
       return {
         valid: isValid,
-        walletType: 'polkadot-js', // Default for now
-        sessionId: isValid ? Math.random().toString(36).substring(2) : null,
+        walletType: 'polkadot-js',
+        sessionId: isValid ? this.generateSecureSessionId() : null,
       };
     } catch (error) {
       logger.error('Failed to verify signature:', error);
@@ -346,11 +428,91 @@ Expiration Time: ${expiresAt.toISOString()}`;
     }
   }
 
+  // Proper cryptographic signature verification
+  private verifyPolkadotSignature(message: string, signature: string, address: string): boolean {
+    try {
+      const { blake2AsU8a } = require('@polkadot/util-crypto');
+      const { Keyring } = require('@polkadot/keyring');
+      
+      // Convert message to bytes
+      const messageBytes = new TextEncoder().encode(message);
+      
+      // Hash the message
+      const messageHash = blake2AsU8a(messageBytes, 256);
+      
+      // Convert signature from hex to bytes
+      const signatureBytes = this.hexToU8a(signature);
+      
+      // Get the public key from the address
+      const keyring = new Keyring({ type: 'sr25519' });
+      const publicKey = keyring.decodeAddress(address);
+      
+      // Verify the signature using crypto
+      const isValid = this.verifySignatureWithCrypto(messageHash, signatureBytes, publicKey);
+      
+      return isValid;
+
+    } catch (error) {
+      logger.error('Polkadot signature verification error:', {
+        address,
+        error,
+      });
+      return false;
+    }
+  }
+
+  private verifySignatureWithCrypto(
+    messageHash: Uint8Array,
+    signature: Uint8Array,
+    publicKey: Uint8Array
+  ): boolean {
+    try {
+      const { sr25519Verify } = require('@polkadot/util-crypto');
+      return sr25519Verify(signature, messageHash, publicKey);
+    } catch (error) {
+      logger.error('Crypto verification error:', error);
+      return false;
+    }
+  }
+
+  private hexToU8a(hex: string): Uint8Array {
+    // Remove 0x prefix if present
+    const cleanHex = hex.startsWith('0x') ? hex.slice(2) : hex;
+    
+    // Ensure even length
+    const paddedHex = cleanHex.length % 2 === 0 ? cleanHex : '0' + cleanHex;
+    
+    // Convert to Uint8Array
+    const bytes = new Uint8Array(paddedHex.length / 2);
+    for (let i = 0; i < paddedHex.length; i += 2) {
+      bytes[i / 2] = parseInt(paddedHex.substr(i, 2), 16);
+    }
+    
+    return bytes;
+  }
+
+  // Generate cryptographically secure session ID
+  private generateSecureSessionId(): string {
+    return generateSecureSessionId();
+  }
+
+  // Validate Polkadot address format
+  private validateAddress(address: string): boolean {
+    try {
+      // Basic validation for Polkadot address format
+      // In a real implementation, you'd use the Polkadot API to validate
+      return /^[1-9A-HJ-NP-Za-km-z]{47,48}$/.test(address);
+    } catch (error) {
+      logger.debug('Address validation error:', { address, error });
+      return false;
+    }
+  }
+
   // Create a new session
   _createSession(address: string, _chainId: string, walletType?: string): any {
-    const sessionId = Math.random().toString(36).substring(2);
-    const accessToken = Math.random().toString(36).substring(2);
-    const refreshToken = Math.random().toString(36).substring(2);
+    const sessionId = this.generateSecureSessionId();
+    const accessToken = this.generateSecureSessionId();
+    const refreshToken = this.generateSecureSessionId();
     const now = new Date();
     const expiresAt = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000); // 7 days
 
@@ -376,8 +538,8 @@ Expiration Time: ${expiresAt.toISOString()}`;
 
   // Refresh a session
   _refreshSession(_sessionId: string): any {
-    const newSessionId = Math.random().toString(36).substring(2);
-    const accessToken = Math.random().toString(36).substring(2);
+    const newSessionId = this.generateSecureSessionId();
+    const accessToken = this.generateSecureSessionId();
     const now = new Date();
     const expiresAt = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000); // 7 days
 
