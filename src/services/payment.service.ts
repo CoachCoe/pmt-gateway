@@ -8,14 +8,75 @@ import {
   SupportedFiatCurrency,
   SupportedCryptoCurrency 
 } from '@/types/api.types';
+import { 
+  ValidationError, 
+  NotFoundError, 
+  ConflictError 
+} from '@/middleware/error.middleware';
 
+/**
+ * Service for managing payment intents and processing payments
+ * 
+ * This service handles the complete payment lifecycle including:
+ * - Creating payment intents with fiat to crypto conversion
+ * - Validating payment data and merchant permissions
+ * - Managing payment status updates
+ * - Retrieving payment history and statistics
+ * 
+ * @example
+ * ```typescript
+ * const paymentService = new PaymentService(prisma);
+ * 
+ * // Create a new payment intent
+ * const payment = await paymentService.createPaymentIntent({
+ *   merchantId: 'merchant-123',
+ *   amount: 100.00,
+ *   currency: 'usd',
+ *   crypto_currency: 'dot'
+ * });
+ * 
+ * // Update payment status
+ * await paymentService.updatePaymentIntentStatus(payment.id, 'SUCCEEDED');
+ * ```
+ */
 export class PaymentService {
   private prisma: PrismaClient;
 
+  /**
+   * Creates a new PaymentService instance
+   * @param prisma - Prisma client instance for database operations
+   */
   constructor(prisma: PrismaClient) {
     this.prisma = prisma;
   }
 
+  /**
+   * Creates a new payment intent with fiat to crypto conversion
+   * 
+   * This method handles the complete payment intent creation process:
+   * 1. Validates merchant exists and is active
+   * 2. Converts fiat amount to crypto using current exchange rates
+   * 3. Validates the converted amount meets minimum requirements
+   * 4. Sets expiration time (default: 5 minutes)
+   * 5. Stores the payment intent in the database
+   * 
+   * @param input - Payment intent creation data
+   * @param merchantId - ID of the merchant creating the payment intent
+   * @returns Promise resolving to the created payment intent response
+   * @throws {NotFoundError} When merchant is not found
+   * @throws {ValidationError} When input validation fails
+   * 
+   * @example
+   * ```typescript
+   * const payment = await paymentService.createPaymentIntent({
+   *   merchantId: 'merchant-123',
+   *   amount: 100.00,
+   *   currency: 'usd',
+   *   crypto_currency: 'dot',
+   *   metadata: { orderId: 'order-456' }
+   * }, 'merchant-123');
+   * ```
+   */
   public async createPaymentIntent(
     input: CreatePaymentIntentRequest,
     merchantId: string
@@ -36,7 +97,7 @@ export class PaymentService {
       });
 
       if (!merchant) {
-        throw new Error('Merchant not found');
+        throw new NotFoundError('Merchant not found');
       }
 
       // Convert fiat amount to DOT
@@ -47,7 +108,7 @@ export class PaymentService {
 
       // Validate DOT amount
       if (!validateDOTAmount(cryptoAmount)) {
-        throw new Error('Invalid DOT amount calculated');
+        throw new ValidationError('Invalid DOT amount calculated');
       }
 
       // Set expiration time (5 minutes from now)
@@ -210,7 +271,7 @@ export class PaymentService {
       }
 
       if (paymentIntent.status !== PaymentStatus.REQUIRES_PAYMENT) {
-        throw new Error('Payment intent cannot be canceled in current status');
+        throw new ConflictError('Payment intent cannot be canceled in current status');
       }
 
       const updatedPaymentIntent = await this.prisma.paymentIntent.update({
@@ -279,34 +340,34 @@ export class PaymentService {
   private validatePaymentIntentInput(input: CreatePaymentIntentRequest): void {
     // Validate amount
     if (input.amount <= 0) {
-      throw new Error('Amount must be positive');
+      throw new ValidationError('Amount must be positive', 'amount');
     }
 
     if (input.amount > 99999999) {
-      throw new Error('Amount too large');
+      throw new ValidationError('Amount too large', 'amount');
     }
 
     // Validate currency
     const supportedCurrencies: SupportedFiatCurrency[] = ['usd', 'eur', 'gbp', 'jpy'];
     if (!supportedCurrencies.includes(input.currency as SupportedFiatCurrency)) {
-      throw new Error('Unsupported currency');
+      throw new ValidationError('Unsupported currency', 'currency');
     }
 
     // Validate crypto currency
     const supportedCryptoCurrencies: SupportedCryptoCurrency[] = ['dot', 'dot-stablecoin'];
     if (input.crypto_currency && !supportedCryptoCurrencies.includes(input.crypto_currency)) {
-      throw new Error('Unsupported crypto currency');
+      throw new ValidationError('Unsupported crypto currency', 'crypto_currency');
     }
 
     // Validate metadata
     if (input.metadata) {
       if (Object.keys(input.metadata).length > 20) {
-        throw new Error('Metadata cannot have more than 20 keys');
+        throw new ValidationError('Metadata cannot have more than 20 keys', 'metadata');
       }
 
       const metadataString = JSON.stringify(input.metadata);
       if (metadataString.length > 1000) {
-        throw new Error('Metadata too large');
+        throw new ValidationError('Metadata too large', 'metadata');
       }
     }
   }

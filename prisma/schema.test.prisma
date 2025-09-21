@@ -1,0 +1,88 @@
+// Test schema file for SQLite
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("TEST_DATABASE_URL")
+}
+
+model Merchant {
+  id              String   @id @default(cuid())
+  name            String
+  email           String   @unique
+  apiKeyHash      String
+  webhookUrl      String?
+  isActive        Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  paymentIntents  PaymentIntent[]
+  
+  @@map("merchants")
+}
+
+model PaymentIntent {
+  id              String   @id @default(cuid())
+  amount          Int      // Amount in smallest currency unit (cents)
+  currency        String   // fiat currency (usd, eur)
+  cryptoAmount    String   // DOT amount as string for precision
+  cryptoCurrency  String   // dot or dot-stablecoin
+  status          PaymentStatus @default(REQUIRES_PAYMENT)
+  walletAddress   String?
+  transactionHash String?
+  expiresAt       DateTime
+  metadata        Json?
+  merchantId      String
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  merchant        Merchant @relation(fields: [merchantId], references: [id], onDelete: Cascade)
+  webhookEvents   WebhookEvent[]
+  
+  @@map("payment_intents")
+}
+
+model WebhookEvent {
+  id                String   @id @default(cuid())
+  paymentIntentId   String
+  eventType         String
+  payload           Json
+  deliveryStatus    WebhookStatus @default(PENDING)
+  retryCount        Int      @default(0)
+  nextRetryAt       DateTime?
+  deliveredAt       DateTime?
+  createdAt         DateTime @default(now())
+  
+  paymentIntent     PaymentIntent @relation(fields: [paymentIntentId], references: [id], onDelete: Cascade)
+  
+  @@map("webhook_events")
+}
+
+model PriceCache {
+  id          String   @id @default(cuid())
+  currency    String   @unique
+  price       String   // Price as string for precision
+  lastUpdated DateTime @default(now())
+  
+  @@map("price_cache")
+}
+
+enum PaymentStatus {
+  REQUIRES_PAYMENT
+  PROCESSING
+  SUCCEEDED
+  FAILED
+  CANCELED
+  EXPIRED
+}
+
+enum WebhookStatus {
+  PENDING
+  DELIVERED
+  FAILED
+  RETRYING
+}

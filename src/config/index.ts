@@ -1,21 +1,25 @@
 import dotenv from 'dotenv';
+import { validateEnvironment, generateSecureJWTSecret, generateSecureSessionSecret } from './validation';
 
 dotenv.config();
 
+// Validate environment variables
+const env = validateEnvironment();
+
 export const config = {
   // Server
-  port: parseInt(process.env['PORT'] || '3000', 10),
-  nodeEnv: process.env['NODE_ENV'] || 'development',
+  port: env.PORT,
+  nodeEnv: env.NODE_ENV,
   
   // Database
-  databaseUrl: process.env['DATABASE_URL'] || '',
+  databaseUrl: env.DATABASE_URL,
   
   // Redis
-  redisUrl: process.env['REDIS_URL'] || 'redis://localhost:6379',
+  redisUrl: env.REDIS_URL,
   
-  // JWT
-  jwtSecret: process.env['JWT_SECRET'] || '',
-  jwtExpiresIn: process.env['JWT_EXPIRES_IN'] || '24h',
+  // JWT - CRITICAL SECURITY: Use validated secrets
+  jwtSecret: env.JWT_SECRET || generateSecureJWTSecret(),
+  jwtExpiresIn: env.JWT_EXPIRES_IN,
   
   // Polkadot
   polkadotRpcEndpoints: process.env['POLKADOT_RPC_ENDPOINTS']?.split(',') || [
@@ -46,9 +50,9 @@ export const config = {
   logLevel: process.env['LOG_LEVEL'] || 'info',
   logFormat: process.env['LOG_FORMAT'] || 'text',
   
-  // Security
-  bcryptRounds: parseInt(process.env['BCRYPT_ROUNDS'] || '10', 10),
-  sessionSecret: process.env['SESSION_SECRET'] || '',
+  // Security - CRITICAL: Use validated secrets
+  bcryptRounds: env.BCRYPT_ROUNDS,
+  sessionSecret: env.SESSION_SECRET || generateSecureSessionSecret(),
   
   // Monitoring
   sentryDsn: process.env['SENTRY_DSN'] || '',

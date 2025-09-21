@@ -113,6 +113,9 @@ export class AuthService {
 
       const token = jwt.sign(payload, config.jwtSecret, {
         expiresIn: config.jwtExpiresIn,
+        algorithm: 'HS256', // Explicitly specify algorithm
+        issuer: 'pmt-gateway',
+        audience: 'pmt-gateway-users',
       } as jwt.SignOptions);
 
       logger.info('Wallet authenticated successfully', {
@@ -131,7 +134,11 @@ export class AuthService {
 
   public async verifyToken(token: string): Promise<AuthPayload | null> {
     try {
-      const payload = jwt.verify(token, config.jwtSecret) as AuthPayload;
+      const payload = jwt.verify(token, config.jwtSecret, {
+        algorithms: ['HS256'], // Explicitly specify allowed algorithms
+        issuer: 'pmt-gateway',
+        audience: 'pmt-gateway-users',
+      }) as AuthPayload;
       return payload;
     } catch (error) {
       logger.debug('Token verification failed:', error);

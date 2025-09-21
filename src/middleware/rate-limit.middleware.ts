@@ -74,6 +74,25 @@ export const authRateLimit = createRateLimit({
   message: 'Too many authentication requests, please try again later',
 });
 
+// Stricter rate limits for sensitive auth operations
+export const strictAuthRateLimit = createRateLimit({
+  windowMs: 5 * 60 * 1000, // 5 minutes
+  max: 5, // 5 requests per 5 minutes
+  message: 'Too many authentication attempts, please try again later',
+});
+
+export const challengeRateLimit = createRateLimit({
+  windowMs: 60 * 1000, // 1 minute
+  max: 3, // 3 challenge requests per minute
+  message: 'Too many challenge requests, please try again later',
+});
+
+export const verifyRateLimit = createRateLimit({
+  windowMs: 60 * 1000, // 1 minute
+  max: 5, // 5 verification requests per minute
+  message: 'Too many verification attempts, please try again later',
+});
+
 export const generalRateLimit = createRateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
   max: 1000, // 1000 requests per 15 minutes
