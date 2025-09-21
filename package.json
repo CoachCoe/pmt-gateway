@@ -27,8 +27,6 @@
   "author": "PMT Gateway Team",
   "license": "MIT",
   "dependencies": {
-    "@polkadot-auth/core": "git+https://github.com/CoachCoe/polkadot-sso.git#main:packages/core",
-    "@polkadot-auth/express": "git+https://github.com/CoachCoe/polkadot-sso.git#main:packages/express",
     "@polkadot/api": "^10.12.1",
     "@polkadot/keyring": "^12.4.2",
     "@polkadot/util": "^12.4.2",

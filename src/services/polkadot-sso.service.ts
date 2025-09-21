@@ -109,11 +109,6 @@ export class PolkadotSSOService {
             <div id="walletStatus" style="margin: 10px 0; padding: 10px; background: #f0f0f0; border-radius: 5px; font-size: 14px;">
               <div>Checking wallet availability...</div>
             </div>
-            
-            <div id="authStatus" style="margin: 10px 0; padding: 10px; background: #e9ecef; border-radius: 5px; font-size: 14px; display: none;">
-              <div id="authMessage">Not authenticated</div>
-              <button id="signOutBtn" onclick="signOut()" style="margin-top: 10px; padding: 5px 10px; background: #dc3545; color: white; border: none; border-radius: 3px; cursor: pointer;">Sign Out</button>
-            </div>
             ${providers
               .map(
                 (provider: any) => `
@@ -194,13 +189,31 @@ export class PolkadotSSOService {
                     const extension = window.injectedWeb3['polkadot-js'];
                     const injected = await extension.enable('PMT Gateway');
                     
-                    // Use the correct signing method
-                    const signature = await injected.signer.signRaw({
-                      address: accountAddress,
-                      data: challengeData.challenge,
-                    });
+                    // Debug: Log available methods
+                    console.log('Available methods:', Object.keys(injected));
+                    console.log('Signer methods:', injected.signer ? Object.keys(injected.signer) : 'No signer');
+                    console.log('Accounts methods:', injected.accounts ? Object.keys(injected.accounts) : 'No accounts');
                     
-                    console.log('Signature created successfully');
+                    // Try different signing methods
+                    let signature;
+                    
+                    if (injected.signer && injected.signer.signRaw) {
+                      // Method 1: Use signer.signRaw
+                      signature = await injected.signer.signRaw({
+                        address: accountAddress,
+                        data: challengeData.challenge,
+                      });
+                    } else if (injected.accounts && injected.accounts.signRaw) {
+                      // Method 2: Use accounts.signRaw
+                      signature = await injected.accounts.signRaw({
+                        address: accountAddress,
+                        data: challengeData.challenge,
+                      });
+                    } else {
+                      throw new Error('No signing method available in this extension version');
+                    }
+                    
+                    console.log('Signature created:', signature.signature);
                     
                     // Send signature to server for verification
                     const verifyResponse = await fetch('/auth/verify', {
@@ -219,25 +232,9 @@ export class PolkadotSSOService {
                     const verifyResult = await verifyResponse.json();
                     
                     if (verifyResult.success) {
-                      // Show success message
-                      alert('🎉 Authentication Successful!\\n\\nAccount: ' + accountAddress + '\\nSession ID: ' + verifyResult.session.id + '\\n\\nYou are now signed in to PMT Gateway!');
+                      alert('🎉 Authentication successful!\\n\\nAccount: ' + accountAddress + '\\nSession: ' + verifyResult.session.id + '\\n\\nYou are now signed in!');
                       
-                      // Update UI to show authenticated state
-                      document.getElementById('walletStatus').innerHTML = '✅ Authenticated as ' + accountAddress;
-                      document.getElementById('walletStatus').style.backgroundColor = '#d4edda';
-                      document.getElementById('walletStatus').style.color = '#155724';
-                      
-                      // Show auth status section
-                      document.getElementById('authStatus').style.display = 'block';
-                      document.getElementById('authMessage').innerHTML = '✅ Authenticated as ' + accountAddress;
-                      document.getElementById('authStatus').style.backgroundColor = '#d4edda';
-                      document.getElementById('authStatus').style.color = '#155724';
-                      
-                      // Hide wallet buttons
-                      document.querySelectorAll('.provider').forEach(btn => {
-                        btn.style.display = 'none';
-                      });
-                      
+                      // In a real app, you would redirect or update UI here
                       console.log('Authentication complete:', verifyResult);
                     } else {
                       alert('❌ Authentication failed: ' + verifyResult.error);
@@ -251,41 +248,6 @@ export class PolkadotSSOService {
                 } catch (error) {
                   console.error('Error:', error);
                   alert('Failed to connect wallet: ' + error.message);
-                }
-              }
-
-              // Sign out function
-              async function signOut() {
-                try {
-                  const response = await fetch('/auth/signout', {
-                    method: 'POST',
-                    headers: {
-                      'Content-Type': 'application/json',
-                    },
-                  });
-                  
-                  const result = await response.json();
-                  
-                  if (result.success) {
-                    // Reset UI
-                    document.getElementById('walletStatus').innerHTML = 'Polkadot.js: ✅ Available | PAPI: ❌ Not available';
-                    document.getElementById('walletStatus').style.backgroundColor = '#f0f0f0';
-                    document.getElementById('walletStatus').style.color = '#000';
-                    
-                    document.getElementById('authStatus').style.display = 'none';
-                    
-                    // Show wallet buttons again
-                    document.querySelectorAll('.provider').forEach(btn => {
-                      btn.style.display = 'block';
-                    });
-                    
-                    alert('✅ Signed out successfully!');
-                  } else {
-                    alert('❌ Sign out failed: ' + result.error);
-                  }
-                } catch (error) {
-                  console.error('Sign out error:', error);
-                  alert('❌ Sign out failed: ' + error.message);
                 }
               }
 
