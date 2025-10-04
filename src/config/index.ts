@@ -73,6 +73,16 @@ export const config = {
   enableWebhooks: process.env['ENABLE_WEBHOOKS'] === 'true',
   enableAnalytics: process.env['ENABLE_ANALYTICS'] === 'true',
   enableDebugMode: process.env['ENABLE_DEBUG_MODE'] === 'true',
+
+  // Escrow Smart Contract
+  escrowEnabled: process.env['ESCROW_ENABLED'] === 'true',
+  escrowContractAddress: process.env['ESCROW_CONTRACT_ADDRESS'] || '',
+  merchantRegistryAddress: process.env['MERCHANT_REGISTRY_ADDRESS'] || '',
+  kusamaRpcUrl: process.env['KUSAMA_RPC_URL'] || 'https://kusama-rpc.polkadot.io',
+  platformPrivateKey: process.env['PLATFORM_PRIVATE_KEY'] || '',
+  platformAddress: process.env['PLATFORM_ADDRESS'] || '',
+  encryptionKey: process.env['ENCRYPTION_KEY'] || '', // 32 bytes hex for AES-256
+  apiKeySalt: process.env['API_KEY_SALT'] || '',
 } as const;
 
 export type Config = typeof config;
