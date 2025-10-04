@@ -1,0 +1,33 @@
+{
+  "name": "@pmt-gateway/payment-widget",
+  "version": "1.0.0",
+  "description": "Embeddable Web3 payment widget for PMT Gateway",
+  "main": "./dist/widget.umd.js",
+  "module": "./dist/widget.es.js",
+  "types": "./dist/widget.d.ts",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "preview": "vite preview"
+  },
+  "keywords": [
+    "payment",
+    "web3",
+    "crypto",
+    "widget",
+    "checkout",
+    "polkadot",
+    "kusama"
+  ],
+  "author": "PMT Gateway",
+  "license": "MIT",
+  "devDependencies": {
+    "@types/node": "^24.6.2",
+    "typescript": "^5.9.3",
+    "vite": "^7.1.9"
+  },
+  "dependencies": {
+    "ethers": "^6.15.0",
+    "qrcode.react": "^4.2.0"
+  }
+}

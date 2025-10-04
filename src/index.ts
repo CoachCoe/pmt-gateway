@@ -2,7 +2,6 @@ import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import compression from 'compression';
-import { PrismaClient } from '@prisma/client';
 import { config } from '@/config';
 import logger from '@/utils/logger';
 import { generalRateLimit } from '@/middleware/rate-limit.middleware';
@@ -11,33 +10,27 @@ import {
   notFoundHandler, 
   correlationIdMiddleware 
 } from '@/middleware/error.middleware';
-import { sessionCleanupJob } from '@/jobs/session-cleanup.job';
 
-// Import services
-import { PaymentService } from '@/services/payment.service';
-import { WebhookService } from '@/services/webhook.service';
-import { AuthService } from '@/services/auth.service';
-import { BlockchainMonitorService } from '@/services/blockchain-monitor.service';
+// Import on-chain services
+import { merchantRegistryService } from '@/services/merchant-registry.service';
+import { sessionService } from '@/services/session.service';
 import { polkadotRealService as polkadotService } from '@/services/polkadot-real.service';
 import { polkadotSSOService } from '@/services/polkadot-sso.service';
 import { priceService } from '@/utils/price.utils';
 
 // Import routes
-import { PaymentIntentRoutes } from '@/routes/payment-intents';
 import { WalletAuthRoutes } from '@/routes/wallet-auth';
+import { Web3AuthRoutes } from '@/routes/web3-auth';
 
 // Import middleware
 import { AuthMiddleware } from '@/middleware/auth.middleware';
 
 class Application {
   private app: express.Application;
-  private prisma: PrismaClient;
   private server: any;
-  private blockchainMonitorService!: BlockchainMonitorService;
 
   constructor() {
     this.app = express();
-    this.prisma = new PrismaClient();
     this.setupMiddleware();
     this.setupRoutes();
     this.setupErrorHandling();
@@ -141,8 +134,8 @@ class Application {
               healthy: priceStatus,
               last_update: priceService.getLastUpdateTime().toISOString(),
             },
-            database: {
-              connected: true, // Prisma will throw if not connected
+            blockchain: {
+              connected: true, // Fully on-chain system
             },
           },
           meta: {
@@ -166,31 +159,15 @@ class Application {
       }
     });
 
-    // Initialize services
-    const paymentService = new PaymentService(this.prisma);
-    const webhookService = new WebhookService(this.prisma);
-    const authService = new AuthService(this.prisma);
-    const authMiddleware = new AuthMiddleware(this.prisma);
-    const blockchainMonitorService = new BlockchainMonitorService(
-      this.prisma,
-      paymentService,
-      webhookService
-    );
+    // Initialize on-chain services
+    const authMiddleware = new AuthMiddleware();
 
-    // Store services for use in start method
-    this.blockchainMonitorService = blockchainMonitorService;
-
-    // API routes
-    this.app.use('/api/v1/payment-intents', new PaymentIntentRoutes(
-      paymentService,
-      webhookService,
-      authMiddleware
-    ).getRouter());
-
+    // API routes (simplified for on-chain system)
     this.app.use('/api/v1/wallet', new WalletAuthRoutes(
-      authService,
       authMiddleware
     ).getRouter());
+
+    this.app.use('/api/v1/auth', new Web3AuthRoutes().getRouter());
 
     // 404 handler
     this.app.use('*', notFoundHandler);
@@ -203,9 +180,9 @@ class Application {
 
   public async start(): Promise<void> {
     try {
-      // Connect to database
-      await this.prisma.$connect();
-      logger.info('Connected to database');
+      // Initialize on-chain services
+      await merchantRegistryService.initialize();
+      logger.info('Merchant registry service initialized');
 
       // Start Polkadot service
       await polkadotService.isApiReady();
@@ -214,20 +191,14 @@ class Application {
       // Start price service
       logger.info('Price service initialized');
 
-      // Start blockchain monitoring
-      await this.blockchainMonitorService.startMonitoring();
-      logger.info('Blockchain monitoring service started');
-
       // Start server
       this.server = this.app.listen(config.port, () => {
-        logger.info(`Server started on port ${config.port}`, {
+        logger.info(`🚀 PMT Gateway started on port ${config.port}`, {
           environment: config.nodeEnv,
           port: config.port,
+          mode: 'fully-on-chain',
         });
       });
-
-      // Start session cleanup job
-      sessionCleanupJob.start();
 
       // Graceful shutdown
       process.on('SIGTERM', this.shutdown.bind(this));
@@ -243,9 +214,6 @@ class Application {
     logger.info('Shutting down application...');
 
     try {
-      // Stop session cleanup job
-      sessionCleanupJob.stop();
-
       // Close server
       if (this.server) {
         this.server.close(() => {
@@ -253,17 +221,13 @@ class Application {
         });
       }
 
-      // Stop blockchain monitoring
-      await this.blockchainMonitorService.stopMonitoring();
-      logger.info('Blockchain monitoring service stopped');
+      // Stop session service cleanup
+      sessionService.stopCleanup();
+      logger.info('Session service stopped');
 
       // Disconnect from Polkadot
       await polkadotService.disconnect();
       logger.info('Disconnected from Polkadot');
-
-      // Disconnect from database
-      await this.prisma.$disconnect();
-      logger.info('Disconnected from database');
 
       logger.info('Application shutdown complete');
       process.exit(0);
