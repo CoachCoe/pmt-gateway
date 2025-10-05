@@ -4,10 +4,11 @@ import { WalletConnect } from './WalletConnect'
 import { PaymentHistory } from './PaymentHistory'
 import { Settings } from './Settings'
 import { Stats } from './Stats'
-import { Wallet, Settings as SettingsIcon, BarChart3, LogOut } from 'lucide-react'
+import { PolkadotDemo } from './PolkadotDemo'
+import { Wallet, Settings as SettingsIcon, BarChart3, LogOut, Code } from 'lucide-react'
 import { useState } from 'react'
 
-type Tab = 'overview' | 'payments' | 'settings'
+type Tab = 'overview' | 'payments' | 'settings' | 'polkadot-ui'
 
 export function Dashboard() {
   const { isConnected } = useAccount()
@@ -125,6 +126,17 @@ export function Dashboard() {
               <SettingsIcon className="w-4 h-4 inline mr-2" />
               Settings
             </button>
+            <button
+              onClick={() => setActiveTab('polkadot-ui')}
+              className={`pb-4 px-1 border-b-2 font-medium text-sm transition-colors ${
+                activeTab === 'polkadot-ui'
+                  ? 'border-blue-500 text-blue-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+              }`}
+            >
+              <Code className="w-4 h-4 inline mr-2" />
+              Polkadot UI
+            </button>
           </div>
         </div>
       </header>
@@ -134,6 +146,7 @@ export function Dashboard() {
         {activeTab === 'overview' && <Stats />}
         {activeTab === 'payments' && <PaymentHistory />}
         {activeTab === 'settings' && <Settings />}
+        {activeTab === 'polkadot-ui' && <PolkadotDemo />}
       </main>
     </div>
   )
